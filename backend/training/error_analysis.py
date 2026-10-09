@@ -276,7 +276,7 @@ def main() -> None:
     parser.add_argument("--limit", type=int, default=None, help="use only N sentences (smoke test)")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--laptops-only-report", type=Path,
-                        default=MODELS_DIR / "candidates" / "eval" / "current" / "evaluation_report.json")
+                        default=MODELS_DIR / "laptops_only_report.json")
     parser.add_argument("--report", type=Path, default=MODELS_DIR / "evaluation_report.json")
     parser.add_argument("--samples", type=Path, default=DATA_DIR / "samples" / "other_domains.csv")
     parser.add_argument("--output-dir", type=Path, default=DOCS_DIR)
