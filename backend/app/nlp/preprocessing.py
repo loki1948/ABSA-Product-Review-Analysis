@@ -115,7 +115,15 @@ def split_sentences(text: str) -> list[Sentence]:
         if not stripped:
             continue
         start += len(raw) - len(raw.lstrip())
-        sentences.append(Sentence(stripped, start, start + len(stripped)))
+        end = start + len(stripped)
+        if not any(char.isalnum() for char in stripped):
+            # "great !!" is split after the first "!": a piece without a single
+            # letter or digit is not a sentence. It belongs to the one before it.
+            if sentences:
+                previous = sentences[-1]
+                sentences[-1] = Sentence(text[previous.start : end], previous.start, end)
+            continue
+        sentences.append(Sentence(stripped, start, end))
     return sentences
 
 

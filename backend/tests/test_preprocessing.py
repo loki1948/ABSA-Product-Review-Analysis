@@ -96,3 +96,15 @@ def test_extract_context_without_boundaries_is_whole_sentence() -> None:
 
 def test_normalize_aspect_lowercases_and_collapses_spaces() -> None:
     assert normalize_aspect("Battery   Life") == "battery life"
+
+
+def test_split_sentences_attaches_stray_punctuation_to_the_previous_sentence() -> None:
+    text = "The battery life is great !! But the screen is dim."
+    sentences = split_sentences(text)
+    assert [s.text for s in sentences] == ["The battery life is great !!", "But the screen is dim."]
+    assert all(text[s.start : s.end] == s.text for s in sentences)
+
+
+def test_split_sentences_drops_leading_punctuation_only_text() -> None:
+    assert [s.text for s in split_sentences("!!! Great screen.")] == ["Great screen."]
+    assert split_sentences("?!") == []
