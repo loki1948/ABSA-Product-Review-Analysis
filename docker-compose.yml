@@ -1,0 +1,30 @@
+# Run the whole application:   docker compose up --build
+# Then open http://localhost:8080
+#
+# Before the first start, the three trained models must be in ./models
+# (see README, "Train the models"). Without them the site still opens and
+# explains that the models are not loaded.
+services:
+  backend:
+    build: ./backend
+    volumes:
+      - ./models:/srv/models:ro     # trained models, never baked into the image
+      - ./data:/srv/data            # SQLite database (data/absa.db) survives restarts
+    environment:
+      ABSA_LOG_LEVEL: INFO
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 15s
+      timeout: 5s
+      start_period: 60s             # loading three BERT models takes time
+      retries: 5
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
