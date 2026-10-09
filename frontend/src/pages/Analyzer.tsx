@@ -1,65 +1,80 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState } from "react";
 
-import JsonPreview from "../components/JsonPreview";
-import { analyzeReview } from "../services/api";
+import AnalysisResult from "../components/AnalysisResult";
+import ReviewInput from "../components/ReviewInput";
+import StateMessage from "../components/StateMessage";
+import { describeError, type ErrorDescription } from "../lib/errors";
+import { analyzeReview, getHealth } from "../services/api";
 import type { AnalysisResponse } from "../types/api";
 
-const EXAMPLE =
-  "The screen is gorgeous and the keyboard feels great, but the battery life is terrible.";
-
-// The request/response wiring below is complete. TODO(frontend team): replace
-// <JsonPreview> with the real result UI (SentimentCard, AspectTable,
-// SentimentChart, aspects highlighted in the review text). See frontend/README.md.
 export default function Analyzer() {
-  const [review, setReview] = useState(EXAMPLE);
+  const [review, setReview] = useState("");
+  const [save, setSave] = useState(true);
   const [result, setResult] = useState<AnalysisResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<ErrorDescription | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [modelsMissing, setModelsMissing] = useState<string | undefined>();
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault();
-    setLoading(true);
+  // Ask once whether the models are loaded, so the form can say why it is
+  // disabled instead of failing on submit. If the backend is unreachable the
+  // form stays enabled and the submit error explains it.
+  useEffect(() => {
+    let cancelled = false;
+    getHealth()
+      .then((health) => {
+        if (!cancelled && !health.models_loaded) {
+          setModelsMissing(health.detail ?? "The models are not loaded.");
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function submit() {
+    setBusy(true);
     setError(null);
     try {
-      setResult(await analyzeReview(review));
+      setResult(await analyzeReview(review, save));
     } catch (reason) {
       setResult(null);
-      setError((reason as Error).message);
+      setError(describeError(reason));
     } finally {
-      setLoading(false);
+      setBusy(false);
     }
   }
 
   return (
-    <section className="space-y-4">
-      <h1 className="text-2xl font-semibold">Review Analyzer</h1>
-      <form onSubmit={handleSubmit} className="space-y-3">
-        <label htmlFor="review" className="block text-sm font-medium">
-          Product review
-        </label>
-        <textarea
-          id="review"
-          value={review}
-          onChange={(event) => setReview(event.target.value)}
-          rows={5}
-          maxLength={5000}
-          placeholder="Enter your product review..."
-          className="w-full rounded-md border border-slate-300 bg-white p-3 text-sm"
-        />
-        <button
-          type="submit"
-          disabled={loading || !review.trim()}
-          className="rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800 disabled:opacity-50"
-        >
-          {loading ? "Analyzing…" : "Analyze Review"}
-        </button>
-      </form>
-      {error && (
-        <p role="alert" className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
-          {error}
+    <section className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold">Review Analyzer</h1>
+        <p className="mt-1 text-sm text-slate-600">
+          Find the product aspects a review mentions and the sentiment towards each one.
         </p>
+      </div>
+      <ReviewInput
+        value={review}
+        onChange={setReview}
+        save={save}
+        onSaveChange={setSave}
+        onSubmit={submit}
+        busy={busy}
+        disabledReason={modelsMissing}
+      />
+      {error && (
+        <StateMessage
+          kind="error"
+          title={error.title}
+          message={error.message}
+          onRetry={error.retryable ? submit : undefined}
+        />
       )}
-      {result && <JsonPreview data={result} />}
+      {result && (
+        <div className={busy ? "opacity-50" : undefined} aria-busy={busy}>
+          <AnalysisResult result={result} />
+        </div>
+      )}
     </section>
   );
 }
