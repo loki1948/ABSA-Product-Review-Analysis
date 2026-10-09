@@ -82,3 +82,21 @@ def test_report_can_be_written_without_the_optional_reports(inputs: dict[str, An
     text = render_report(inputs["bert"], None, None, inputs["dataset"])
     assert "## 6. Results" in text
     assert "not available" in text
+
+
+def test_slides_use_the_same_numbers_as_the_report(inputs: dict[str, Any]) -> None:
+    from training.report import render_slides
+
+    text = render_slides(**inputs)
+    f1 = inputs["bert"]["results"]["all"]["aspect_extraction"]["f1"]
+    assert text.startswith("---\nmarp: true")
+    assert f"| Aspect extraction F1 | {f1 - 0.4:.3f} | {f1:.3f} |" in text
+    assert text.count("\n---\n") >= 10, "one slide per separator"
+
+
+def test_slides_do_not_claim_missing_comparisons(inputs: dict[str, Any]) -> None:
+    from training.report import render_slides
+
+    text = render_slides(inputs["bert"], None, None, inputs["dataset"])
+    assert "Baseline" not in text
+    assert "laptops only" not in text
