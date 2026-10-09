@@ -10,6 +10,41 @@ python -m training.train_sentiment --task overall  # 4. overall sentiment model 
 python -m training.evaluate                        # 5. test-set metrics         -> docs/results.md
 ```
 
+## Retraining safely: `run_all` and `promote`
+
+The five commands above write straight into the folders the application loads.
+To retrain without touching the deployed models, use the chain instead:
+
+```
+python -m training.run_all --smoke    # 1. whole chain on 32 sentences (minutes): does it run?
+python -m training.run_all            # 2. train all three models, evaluate new and deployed ones
+python -m training.run_all --status   #    (from a second terminal) done / running / pending
+python -m training.promote            # 3. compare new with deployed on both test domains
+python -m training.promote --apply    # 4. install the candidates that qualify
+python -m training.evaluate           # 5. rewrite docs/results.md for the installed models
+```
+
+- `run_all` trains into `models/candidates/` with the default options below,
+  one model after another, and writes each step's output to
+  `models/candidates/logs/<step>.log`.
+- **It can be interrupted.** A step is complete once its last file exists
+  (`training_log.json` for a model, `evaluation_report.json` for an
+  evaluation). Starting `run_all` again skips complete steps; a training step
+  that was interrupted starts over. If the process was killed, delete
+  `models/candidates/logs/run_all.lock` first.
+- It keeps Windows awake while it runs. Closing the laptop lid still suspends.
+- `promote` decides per model with one metric, on the laptops and restaurants
+  test sets: span F1 for aspect extraction, macro-F1 for both sentiment
+  models. A candidate qualifies when that metric is higher on both domains
+  together and at most 0.01 lower on either one. Otherwise it reports
+  "needs decision" and installs nothing for that model.
+- Nothing is deleted: the replaced model moves to `models/previous/`, and the
+  candidate folder is copied, not moved.
+- Delete `models/candidates/_smoke/` after a smoke test.
+
+Always finish with `python -m training.evaluate`: `pytest` fails if
+`models/evaluation_report.json` does not describe the installed models.
+
 ## Options
 
 Both training scripts accept (the exact settings of the shipped models are in
