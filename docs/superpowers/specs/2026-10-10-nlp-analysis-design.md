@@ -60,8 +60,8 @@ Built by `error_analysis.py` from reports that already exist:
 - a qualitative check on a third category with no labelled data: twelve
   hand-written reviews (phones, hotels, headphones) in
   `data/samples/other_domains.csv`, run through the pipeline, with the output
-  listed and each line marked by a person as right or wrong. It is stated as
-  an illustration, not a metric.
+  listed for a reader to judge. It is stated as an illustration, not a metric;
+  no correctness figure is claimed for it.
 
 ### 2.4 Notebooks (`notebooks/`)
 
