@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import pytest
 from fastapi.testclient import TestClient
+
+from tests.conftest import requires_models
 
 REVIEW = "The camera is excellent but the battery life is poor."
 
@@ -127,3 +130,33 @@ def test_cors_allows_the_frontend_origin(client: TestClient) -> None:
         headers={"Origin": "http://localhost:5173", "Access-Control-Request-Method": "POST"},
     )
     assert response.headers["access-control-allow-origin"] == "http://localhost:5173"
+
+
+@pytest.mark.model
+@requires_models
+def test_analyze_endpoint_with_the_deployed_models(real_client: TestClient) -> None:
+    """The whole path a user takes: HTTP request -> real models -> database -> response."""
+    review = "The screen is gorgeous and the keyboard feels great, but the battery life is terrible."
+    response = real_client.post("/api/analyze", json={"review": review})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["id"] is not None
+    assert body["overall_sentiment"] in {"positive", "negative", "neutral"}
+    assert body["aspects"], "no aspects extracted"
+    for aspect in body["aspects"]:
+        assert body["review"][aspect["start"] : aspect["end"]] == aspect["aspect"]
+        assert aspect["sentiment"] in {"positive", "negative", "neutral"}
+        assert 0.0 <= aspect["confidence"] <= 1.0
+    assert real_client.get(f"/api/reviews/{body['id']}").json() == body
+    assert real_client.get("/api/health").json()["status"] == "ok"
+
+
+@pytest.mark.model
+@requires_models
+def test_analyze_endpoint_handles_a_restaurant_review(real_client: TestClient) -> None:
+    response = real_client.post(
+        "/api/analyze",
+        json={"review": "The pasta was delicious but the service was slow.", "save": False},
+    )
+    assert response.status_code == 200
+    assert response.json()["aspects"], "no aspects extracted from a restaurant review"

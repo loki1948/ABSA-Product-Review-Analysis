@@ -15,9 +15,9 @@ Four evaluations, all on the official SemEval-2014 gold test data:
                             full pipeline: an item is correct only if the
                             aspect span AND its sentiment are both right.
 
-Outputs: ``models/evaluation_report.json``, ``docs/results.md`` and
-``docs/figures/sentiment_confusion_matrix.png``. Nothing in those files is
-typed by hand - rerun this script to regenerate them.
+Outputs: ``models/evaluation_report.json``, ``docs/results.md`` and two
+confusion-matrix figures in ``docs/figures``. Nothing in those files is typed
+by hand - rerun this script to regenerate them.
 """
 
 from __future__ import annotations
@@ -290,6 +290,11 @@ def render_markdown(report: dict[str, Any]) -> str:
         lines += _classification_section(
             "Overall (sentence-level) sentiment - weak labels", results["overall_sentiment"]
         )
+        if scope == "all":
+            lines += [
+                "![Overall-sentiment confusion matrix](figures/overall_confusion_matrix.png)",
+                "",
+            ]
     lines += [
         "## Notes for interpreting these numbers",
         "",
@@ -298,9 +303,33 @@ def render_markdown(report: dict[str, Any]) -> str:
         "  aspect polarities of each sentence (majority of positive vs. negative, neutral",
         "  on a tie). Treat that table as indicative only.",
         "- All numbers come from a single training run (one seed).",
+        "- Models trained by `training.run_all` are selected over the previously deployed models by comparing test-set scores",
+        "  (`training.promote`: span F1 for aspect extraction, macro-F1 for sentiment).",
+        "  Choosing between two models on the test set makes these numbers slightly",
+        "  optimistic as an estimate for unseen reviews.",
         "",
     ]
     return "\n".join(lines)
+
+
+def write_outputs(report: dict[str, Any], report_path: Path, markdown_path: Path) -> None:
+    """Write the report, the tables and both figures, so they always describe one run."""
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    figures = markdown_path.parent / "figures"
+    summary = report["results"]["all"]
+    plot_confusion_matrix(
+        summary["aspect_sentiment"]["confusion_matrix"],
+        "Aspect sentiment - test set",
+        figures / "sentiment_confusion_matrix.png",
+    )
+    plot_confusion_matrix(
+        summary["overall_sentiment"]["confusion_matrix"],
+        "Overall sentiment - test set (weak labels)",
+        figures / "overall_confusion_matrix.png",
+    )
+    markdown_path.parent.mkdir(parents=True, exist_ok=True)
+    markdown_path.write_text(render_markdown(report), encoding="utf-8")
 
 
 def main() -> None:
@@ -348,15 +377,7 @@ def main() -> None:
         "training": training,
         "results": results,
     }
-    args.report.parent.mkdir(parents=True, exist_ok=True)
-    args.report.write_text(json.dumps(report, indent=2), encoding="utf-8")
-    plot_confusion_matrix(
-        results["all"]["aspect_sentiment"]["confusion_matrix"],
-        "Aspect sentiment - test set",
-        args.markdown.parent / "figures" / "sentiment_confusion_matrix.png",
-    )
-    args.markdown.parent.mkdir(parents=True, exist_ok=True)
-    args.markdown.write_text(render_markdown(report), encoding="utf-8")
+    write_outputs(report, args.report, args.markdown)
 
     summary = results["all"]
     print(f"\nTest sentences: {summary['test_sentences']}  ({', '.join(domains)})")

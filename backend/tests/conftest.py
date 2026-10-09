@@ -101,3 +101,21 @@ def client(tmp_path, monkeypatch, stub_pipeline) -> Iterator[TestClient]:
 @pytest.fixture(scope="session")
 def real_pipeline() -> ABSAPipeline:
     return ABSAPipeline.from_pretrained(ASPECT_MODEL_DIR, SENTIMENT_MODEL_DIR, OVERALL_MODEL_DIR)
+
+
+@pytest.fixture
+def real_client(tmp_path, monkeypatch) -> Iterator[TestClient]:
+    """API client that loads the deployed models at startup; temporary database."""
+    monkeypatch.setenv("ABSA_DATABASE_URL", f"sqlite:///{(tmp_path / 'test.db').as_posix()}")
+    monkeypatch.setenv("ABSA_LOAD_MODELS", "true")
+
+    from app.config import get_settings
+    from app.database.database import reset_engine
+    from app.main import create_app
+
+    get_settings.cache_clear()
+    reset_engine()
+    with TestClient(create_app()) as test_client:
+        yield test_client
+    reset_engine()
+    get_settings.cache_clear()
