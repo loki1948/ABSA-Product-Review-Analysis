@@ -1,0 +1,24 @@
+# PyTorch: install the build that matches your machine FIRST, e.g.
+#   CPU only : pip install torch --index-url https://download.pytorch.org/whl/cpu
+#   CUDA     : see https://pytorch.org/get-started/locally/
+torch>=2.6
+
+# NLP / ML
+transformers>=4.44
+scikit-learn>=1.5
+pandas>=2.2
+numpy>=1.26
+nltk>=3.9
+matplotlib>=3.9
+tqdm>=4.66
+
+# API
+fastapi>=0.115
+uvicorn[standard]>=0.30
+pydantic>=2.7
+pydantic-settings>=2.3
+sqlalchemy>=2.0
+
+# Tests
+pytest>=8.0
+httpx>=0.27

@@ -1,0 +1,277 @@
+{
+  "generated_at": "2026-10-05T18:54:32+00:00",
+  "dataset": "SemEval-2014 Task 4, gold test set",
+  "domains": [
+    "laptops"
+  ],
+  "training": {
+    "aspect": {
+      "hyperparameters": {
+        "model_name": "bert-base-uncased",
+        "domains": [
+          "laptops"
+        ],
+        "epochs": 3,
+        "batch_size": 16,
+        "lr": 3e-05,
+        "weight_decay": 0.01,
+        "warmup_ratio": 0.1,
+        "max_length": 128,
+        "seed": 42,
+        "limit": null,
+        "output_dir": "C:\\Users\\Admin\\Desktop\\PROJECTS\\NLP\\models\\aspect_extraction"
+      },
+      "data": {
+        "train_sentences": 2723,
+        "val_sentences": 303
+      },
+      "versions": {
+        "torch": "2.14.1+cpu"
+      },
+      "history": [
+        {
+          "epoch": 1,
+          "train_loss": 0.23161086686341323,
+          "validation": {
+            "precision": 0.7488789237668162,
+            "recall": 0.7952380952380952,
+            "f1": 0.7713625866050808,
+            "true_positives": 167,
+            "predicted": 223,
+            "gold": 210
+          }
+        },
+        {
+          "epoch": 2,
+          "train_loss": 0.04536066599959098,
+          "validation": {
+            "precision": 0.7616822429906542,
+            "recall": 0.7761904761904762,
+            "f1": 0.768867924528302,
+            "true_positives": 163,
+            "predicted": 214,
+            "gold": 210
+          }
+        },
+        {
+          "epoch": 3,
+          "train_loss": 0.021649299971991894,
+          "validation": {
+            "precision": 0.7587719298245614,
+            "recall": 0.8238095238095238,
+            "f1": 0.7899543378995434,
+            "true_positives": 173,
+            "predicted": 228,
+            "gold": 210
+          }
+        }
+      ],
+      "best_epoch": 3,
+      "selection_metric": "f1",
+      "best_validation_score": 0.7899543378995434,
+      "training_minutes": 29.38,
+      "device": "cpu"
+    },
+    "sentiment": {
+      "hyperparameters": {
+        "model_name": "bert-base-uncased",
+        "domains": [
+          "laptops"
+        ],
+        "epochs": 3,
+        "batch_size": 16,
+        "lr": 2e-05,
+        "weight_decay": 0.01,
+        "warmup_ratio": 0.1,
+        "max_length": 128,
+        "seed": 42,
+        "limit": null,
+        "output_dir": "C:\\Users\\Admin\\Desktop\\PROJECTS\\NLP\\models\\sentiment",
+        "no_sentence_level": false
+      },
+      "data": {
+        "train_aspect_examples": 2091,
+        "train_sentence_examples": 1308,
+        "val_aspect_examples": 205,
+        "val_sentence_examples": 144
+      },
+      "versions": {
+        "torch": "2.14.1+cpu"
+      },
+      "history": [
+        {
+          "epoch": 1,
+          "train_loss": 0.8100203463139692,
+          "validation": {
+            "accuracy": 0.7609756097560976,
+            "macro_f1": 0.7022794448796698,
+            "overall_accuracy": 0.7847222222222222,
+            "overall_macro_f1": 0.7165373372868168
+          }
+        },
+        {
+          "epoch": 2,
+          "train_loss": 0.4003021068329599,
+          "validation": {
+            "accuracy": 0.751219512195122,
+            "macro_f1": 0.7001530134661484,
+            "overall_accuracy": 0.7777777777777778,
+            "overall_macro_f1": 0.7093367653367654
+          }
+        },
+        {
+          "epoch": 3,
+          "train_loss": 0.2519456532754488,
+          "validation": {
+            "accuracy": 0.7707317073170732,
+            "macro_f1": 0.7383626456997034,
+            "overall_accuracy": 0.7777777777777778,
+            "overall_macro_f1": 0.7262493224932248
+          }
+        }
+      ],
+      "best_epoch": 3,
+      "selection_metric": "macro_f1",
+      "best_validation_score": 0.7383626456997034,
+      "training_minutes": 31.15,
+      "device": "cpu"
+    }
+  },
+  "results": {
+    "all": {
+      "test_sentences": 800,
+      "aspect_extraction": {
+        "precision": 0.7863636363636364,
+        "recall": 0.7935779816513762,
+        "f1": 0.7899543378995434,
+        "true_positives": 519,
+        "predicted": 660,
+        "gold": 654
+      },
+      "aspect_sentiment": {
+        "support": 638,
+        "accuracy": 0.774294670846395,
+        "macro": {
+          "precision": 0.7320086267562486,
+          "recall": 0.7444934679154592,
+          "f1": 0.7287549905627105
+        },
+        "weighted": {
+          "precision": 0.7804448877999592,
+          "recall": 0.774294670846395,
+          "f1": 0.7708634312359542
+        },
+        "per_class": {
+          "negative": {
+            "precision": 0.6184971098265896,
+            "recall": 0.8359375,
+            "f1": 0.7109634551495017,
+            "support": 128
+          },
+          "neutral": {
+            "precision": 0.6929133858267716,
+            "recall": 0.5207100591715976,
+            "f1": 0.5945945945945946,
+            "support": 169
+          },
+          "positive": {
+            "precision": 0.8846153846153846,
+            "recall": 0.8768328445747801,
+            "f1": 0.8807069219440353,
+            "support": 341
+          }
+        },
+        "confusion_matrix": {
+          "labels": [
+            "negative",
+            "neutral",
+            "positive"
+          ],
+          "matrix": [
+            [
+              107,
+              15,
+              6
+            ],
+            [
+              48,
+              88,
+              33
+            ],
+            [
+              18,
+              24,
+              299
+            ]
+          ]
+        }
+      },
+      "overall_sentiment": {
+        "support": 411,
+        "accuracy": 0.7956204379562044,
+        "macro": {
+          "precision": 0.7621588388995016,
+          "recall": 0.7341177076891362,
+          "f1": 0.7237725074369666
+        },
+        "weighted": {
+          "precision": 0.8035510196427824,
+          "recall": 0.7956204379562044,
+          "f1": 0.7834258831181213
+        },
+        "per_class": {
+          "negative": {
+            "precision": 0.6470588235294118,
+            "recall": 0.8979591836734694,
+            "f1": 0.7521367521367521,
+            "support": 98
+          },
+          "neutral": {
+            "precision": 0.7446808510638298,
+            "recall": 0.3977272727272727,
+            "f1": 0.5185185185185185,
+            "support": 88
+          },
+          "positive": {
+            "precision": 0.8947368421052632,
+            "recall": 0.9066666666666666,
+            "f1": 0.9006622516556292,
+            "support": 225
+          }
+        },
+        "confusion_matrix": {
+          "labels": [
+            "negative",
+            "neutral",
+            "positive"
+          ],
+          "matrix": [
+            [
+              88,
+              3,
+              7
+            ],
+            [
+              36,
+              35,
+              17
+            ],
+            [
+              12,
+              9,
+              204
+            ]
+          ]
+        }
+      },
+      "end_to_end": {
+        "precision": 0.6093023255813953,
+        "recall": 0.6159874608150471,
+        "f1": 0.612626656274357,
+        "true_positives": 393,
+        "predicted": 645,
+        "gold": 638
+      }
+    }
+  }
+}
