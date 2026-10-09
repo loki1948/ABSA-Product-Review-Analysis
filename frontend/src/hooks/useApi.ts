@@ -3,6 +3,8 @@ import { useCallback, useEffect, useState } from "react";
 interface ApiState<T> {
   data: T | null;
   error: string | null;
+  /** What was thrown, for `describeError`; null when the last load succeeded. */
+  failure: unknown;
   loading: boolean;
   reload: () => void;
 }
@@ -16,17 +18,17 @@ interface ApiState<T> {
  */
 export function useApi<T>(load: () => Promise<T>, deps: unknown[] = []): ApiState<T> {
   const [data, setData] = useState<T | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [failure, setFailure] = useState<unknown>(null);
   const [loading, setLoading] = useState(true);
   const [version, setVersion] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    setError(null);
+    setFailure(null);
     load()
       .then((result) => !cancelled && setData(result))
-      .catch((reason: Error) => !cancelled && setError(reason.message))
+      .catch((reason: unknown) => !cancelled && setFailure(reason))
       .finally(() => !cancelled && setLoading(false));
     return () => {
       cancelled = true;
@@ -35,5 +37,6 @@ export function useApi<T>(load: () => Promise<T>, deps: unknown[] = []): ApiStat
   }, [version, ...deps]);
 
   const reload = useCallback(() => setVersion((v) => v + 1), []);
-  return { data, error, loading, reload };
+  const error = failure === null ? null : failure instanceof Error ? failure.message : String(failure);
+  return { data, error, failure, loading, reload };
 }
