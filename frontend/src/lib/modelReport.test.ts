@@ -62,3 +62,10 @@ describe("sentiment helpers", () => {
     expect(sentimentLabel("negative")).toBe("Negative");
   });
 });
+
+describe("percent near certainty", () => {
+  it("never shows 100% for a probability below 1", () => {
+    expect(percent(0.997)).toBe("99%");
+    expect(percent(0.9999)).toBe("99%");
+  });
+});

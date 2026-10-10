@@ -65,6 +65,8 @@ function parseRows(input: string): Row[] {
     }
   }
   if (rowHasContent || field !== "" || fields.length > 0) endRow(); // last line without a newline
+  // Empty lines at the end of a file are not rows.
+  while (rows.length > 0 && rows[rows.length - 1].fields.every((value) => value === "")) rows.pop();
   return rows;
 }
 

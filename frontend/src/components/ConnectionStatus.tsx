@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import { describeError } from "../lib/errors";
 import { getHealth } from "../services/api";
 
 type State = { tone: "checking" | "ok" | "warn" | "down"; text: string };
@@ -26,8 +27,8 @@ export default function ConnectionStatus() {
             : { tone: "warn", text: health.detail ?? "Backend degraded" },
         );
       })
-      .catch((error: Error) => {
-        if (!cancelled) setState({ tone: "down", text: error.message });
+      .catch((error: unknown) => {
+        if (!cancelled) setState({ tone: "down", text: describeError(error).title });
       });
     return () => {
       cancelled = true;

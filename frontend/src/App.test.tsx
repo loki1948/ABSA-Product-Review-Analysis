@@ -66,3 +66,12 @@ describe("Home page", () => {
     expect(screen.getByRole("heading", { name: /review analyzer/i })).toBeInTheDocument();
   });
 });
+
+describe("connection indicator", () => {
+  it("says the backend is unreachable when a proxy answers for it", async () => {
+    const { ApiError } = await import("./services/api");
+    vi.mocked(getHealth).mockRejectedValue(new ApiError("Request failed (HTTP 502).", 502));
+    renderApp();
+    expect(await screen.findByText("Cannot reach the backend")).toBeInTheDocument();
+  });
+});

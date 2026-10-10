@@ -14,7 +14,11 @@ export function describeError(error: unknown): ErrorDescription {
   const message = error instanceof Error ? error.message : "Unexpected error.";
 
   switch (status) {
+    // 502 and 504 come from a proxy in front of a backend that is down (the
+    // Vite dev server, nginx): to the user that is the same as no connection.
     case 0:
+    case 502:
+    case 504:
       return {
         title: "Cannot reach the backend",
         message: "Start it from the backend folder with:\nuvicorn app.main:app --reload",

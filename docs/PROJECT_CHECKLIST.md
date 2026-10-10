@@ -1,138 +1,127 @@
 # Full-project checklist
 
-State of every module on 2026-10-09, what it depends on, and how it is tested.
-Status is one of **Completed**, **Partial** or **Pending**. "SP" is the
-sub-project that finishes the row; each sub-project gets its own spec and plan
-under `docs/superpowers/`.
+Status of every module on 2026-10-10, with the evidence for it. Status is
+**Completed** (built and verified as described), **Partial** (built, with a
+named gap) or **Pending**.
 
-| SP | Scope | Order |
-|---|---|---|
-| 1 | Models and evaluation | first: every later part shows or reports these numbers |
-| 2 | Frontend application | second; can be designed while SP1 trains |
-| 3 | NLP analysis: baseline, error analysis, notebooks, transfer | third; needs SP1's models |
-| 4 | Delivery: Docker, report, slides, repository | last; needs everything above |
+**The project is not 100% complete.** Section J lists what is still open.
 
 ## A. Data
 
-| Module | Status | Depends on | Tested by | SP |
-|---|---|---|---|---|
-| Dataset download and validation (`training/prepare_dataset.py`) | Completed | network on first run | `tests/test_dataset.py` | - |
-| Train / validation / test split, leakage check | Completed | above | `tests/test_dataset.py` | - |
-| Dataset statistics (`data/processed/dataset_stats.json`) | Completed | above | generated; quoted in `docs/methodology.md` | - |
+| Module | Status | Evidence |
+|---|---|---|
+| Dataset download, validation, split, leakage check | Completed | `tests/test_dataset.py`; notebook 01 repeats the leakage check (0 shared sentences) |
+| Dataset statistics | Completed | `data/processed/dataset_stats.json`; tables in notebook 01 and the report |
+| Sample reviews for demo and transfer illustration | Completed | `data/samples/demo_reviews.csv`, `data/samples/other_domains.csv` |
 
 ## B. NLP core
 
-| Module | Status | Depends on | Tested by | SP |
-|---|---|---|---|---|
-| Preprocessing: cleaning, sentences, tokens, BIO, context | Completed | NLTK | `tests/test_preprocessing.py` | - |
-| Aspect-extraction wrapper and tag-to-span logic | Completed | preprocessing | `tests/test_aspect.py` | - |
-| Sentiment wrapper, aspect and overall classification | Completed | preprocessing | `tests/test_sentiment.py` | - |
-| End-to-end pipeline (`nlp/pipeline.py`) | Completed | the three above | `tests/test_pipeline.py` (stub models) | - |
+| Module | Status | Evidence |
+|---|---|---|
+| Preprocessing: cleaning, sentences, tokens, BIO, context | Completed | `tests/test_preprocessing.py`; notebook 02. Fixed: punctuation-only fragments ("!!") no longer count as sentences |
+| Aspect extraction, sentiment, pipeline | Completed | `tests/test_aspect.py`, `test_sentiment.py`, `test_pipeline.py`, including 7 tests on the real models |
 
-## C. Models
+## C. Models (sub-project 1)
 
-| Module | Status | Depends on | Tested by | SP |
-|---|---|---|---|---|
-| Training scripts (`train_aspect`, `train_sentiment`) | Completed | A | smoke run with `--limit 32` | - |
-| Aspect-extraction model | Partial: trained on laptops only | training scripts | span F1 on both test domains | 1 |
-| Aspect-sentiment model | Partial: weights from an interrupted run, no training log, laptops only | training scripts | macro-F1, mixed-sentence accuracy on both domains | 1 |
-| Overall-sentiment model | Pending: folder is empty, so the app cannot analyse | training scripts | macro-F1 against weak labels | 1 |
-| Resumable training chain (`training/run_all.py`) | Pending | training scripts | `tests/test_run_all.py` | 1 |
-| Comparison and promotion (`training/promote.py`) | Pending | run_all output | `tests/test_promote.py` | 1 |
+| Module | Status | Evidence |
+|---|---|---|
+| Aspect-extraction model, both domains | Completed | `models/aspect_extraction/training_log.json`: best epoch 3, validation F1 0.8312. Test F1 0.8462 |
+| Aspect-sentiment model, both domains | Completed | best epoch 3, validation macro-F1 0.7574. Test accuracy 0.8151, macro-F1 0.7456 |
+| Overall-sentiment model, both domains | Completed | best epoch 4, validation macro-F1 0.7363. Test macro-F1 0.7202 (weak labels) |
+| Resumable training chain (`training/run_all.py`) | Completed | 14 tests; smoke run passed in 3 min 17 s; full run finished 2026-10-10 09:30 |
+| Comparison and promotion (`training/promote.py`) | Completed | 12 tests; all three candidates met the rule on laptops and restaurants; the comparison is reproduced by `python -m training.promote`; the laptops-only side is in `docs/transfer.md` |
+| Previous models preserved | Completed | `models/previous/aspect_extraction-20261010-093116`, `models/previous/sentiment-20261010-093116`; `models/sentiment_joint_backup` and `models/train_sentiment_aspect.log` unchanged; `models/candidates` kept |
 
-## D. Evaluation
+## D. Evaluation (sub-project 1)
 
-| Module | Status | Depends on | Tested by | SP |
-|---|---|---|---|---|
-| Metrics (`training/metrics.py`) | Completed | - | `tests/test_dataset.py` | - |
-| Evaluation script (`training/evaluate.py`) | Partial: no overall-sentiment figure, no unit tests | C | `tests/test_evaluate.py` (new) | 1 |
-| `docs/results.md`, `models/evaluation_report.json` | Partial: describe the old joint model, laptops only, no mixed-sentence row | deployed models | report-freshness test (new) | 1 |
-| Confusion-matrix figures | Partial: one of two | evaluate | file exists and is embedded in `results.md` | 1 |
-| Real-model tests (7 existing) | Partial: all skipped today because a model is missing | deployed models | `pytest` with zero skips | 1 |
+| Module | Status | Evidence |
+|---|---|---|
+| `docs/results.md`, `models/evaluation_report.json` | Completed | Generated 2026-10-10 from the deployed models, both domains, with the mixed-sentence breakdown |
+| Two confusion-matrix figures | Completed | `docs/figures/sentiment_confusion_matrix.png`, `overall_confusion_matrix.png` |
+| Report describes the deployed models | Completed | `test_report_describes_the_deployed_models` passes; `/api/model-info` returned both domains in the browser test |
+| Real-model tests | Completed | `pytest`: 120 passed, 0 skipped, 0 failed (was 10 skipped) |
 
 ## E. Backend API
 
-| Module | Status | Depends on | Tested by | SP |
-|---|---|---|---|---|
-| `POST /api/analyze` | Completed in code; answers 503 today | C | `tests/test_api.py` (stubs); real-model integration test (new) | 1 |
-| `POST /api/analyze/batch` | Completed | C | `tests/test_api.py` | - |
-| History: list, get, delete | Completed | database | `tests/test_api.py`, `tests/test_database.py` | - |
-| `GET /api/statistics` | Completed | database | `tests/test_api.py` | - |
-| `GET /api/health`, `GET /api/model-info` | Completed; model-info serves stale numbers today | D | `tests/test_api.py`; freshness test (new) | 1 |
-| Validation and error shape (422, 404, 503, 500) | Completed | - | `tests/test_api.py` | - |
-| SQLite storage (SQLAlchemy) | Completed | - | `tests/test_database.py` | - |
-| Configuration, CORS, logging | Completed | - | `tests/test_api.py` | - |
-| CSV batch handling for large files | Pending: the endpoint takes at most 50 reviews and is all-or-nothing | batch endpoint | decided in SP2's spec: chunk in the browser, or add an upload endpoint | 2 |
+| Module | Status | Evidence |
+|---|---|---|
+| Analyze (single, batch), history, statistics, health, model info | Completed | `tests/test_api.py` (stubs) plus two tests through the real models; exercised from the browser |
+| Validation and error shape, storage, configuration, CORS | Completed | `tests/test_api.py`, `tests/test_database.py` |
 
-## F. Frontend
+## F. Frontend (sub-project 2)
 
-The scaffold exists: routing, typed API client, `useApi`, connection indicator,
-and four pages that print raw JSON. `npm run build` passes. Everything a user
-sees is still to build.
+Automated: `npm test` 87 passed; `npm run build` passes. Browser: one session
+on 2026-10-10 in Chrome against the real backend and models, driven by script
+(DOM events and DOM reads; see "Not verified" below).
 
-| Module | Status | Depends on | Tested by | SP |
-|---|---|---|---|---|
-| API client and types (`services/api.ts`, `types/api.ts`) | Completed; `ModelInfoResponse` is untyped | E | type-check; client tests (new) | 2 |
-| Review-input workflow: text box, example reviews, character count against the 5000 limit, blank-input guard, save toggle, submit and loading state | Partial: plain textarea and button | `/analyze` | component tests | 2 |
-| Overall-sentiment result: label, confidence, "traditional view" framing | Pending | `/analyze` | component tests | 2 |
-| Aspect-level results: table with aspect, sentiment, confidence, context | Pending | `/analyze` | component tests | 2 |
-| Aspects highlighted inside the review text using `start`/`end` | Pending | `/analyze` | component test with overlapping-free spans | 2 |
-| Per-review sentiment chart | Pending | Recharts | render test | 2 |
-| Traditional versus aspect-based comparison view | Pending | `/analyze` | component test | 2 |
-| Error handling: backend unreachable, models not loaded (503), invalid input (422), server error (500), request in flight | Partial: one red text line | `ApiError` | tests with a mocked client for each case | 2 |
-| Empty states: no aspects found, no history, no statistics | Pending | - | component tests | 2 |
-| Home page: explanation, worked example | Partial: title and one paragraph | - | render test | 2 |
-| History page: table, pagination, sentiment filter, delete with confirmation, detail view | Pending | `/reviews` | component tests | 2 |
-| Dashboard: sentiment distribution, aspect frequency, sentiment per aspect | Pending | `/statistics` | render tests | 2 |
-| Model-performance card | Pending | `/model-info`, SP1's report | component test against a sample report | 2 |
-| Batch page: CSV upload, progress, result table, CSV export | Pending | `/analyze/batch` | parser unit tests, component test | 2 |
-| Responsive layout, keyboard and screen-reader basics | Pending | all pages | manual check at phone and desktop width | 2 |
-| Frontend test setup (Vitest, React Testing Library) | Pending | - | `npm test` | 2 |
-| Remove `JsonPreview` and the `TODO(frontend team)` comments | Pending | all pages | `git grep` finds none | 2 |
+| Module | Status | Evidence |
+|---|---|---|
+| Review-input workflow (examples, counter, blank guard, save toggle, Ctrl+Enter) | Completed | `ReviewInput.test.tsx`; browser: blank input disables the button, 5000-character limit applied |
+| Overall sentiment and aspect-level results, highlighting, per-review chart, comparison sentence | Completed | `AnalysisResult.test.tsx`; browser: laptop review gave screen and keyboard positive, battery life negative; restaurant review gave pasta and staff positive, prices negative |
+| Empty state (no aspects) | Completed | Test; browser: "It arrived on Tuesday." shows the no-aspects message and still shows the overall label |
+| Error handling: backend unreachable, models not loaded, invalid input, server error | Completed | `Analyzer.test.tsx`, `App.test.tsx`; browser: both states checked on every page. Found and fixed: behind the dev proxy a stopped backend answers HTTP 502, which was shown as a server error |
+| History: list, pagination, filter, full analysis, delete with confirmation | Completed | `History.test.tsx`; browser: 15 reviews paged 10 + 5, negative filter, expand, cancel, delete |
+| Dashboard: summary, three charts, model performance | Completed | `Dashboard.test.tsx`; browser: charts drawn, aspects grouped ("prices" counted under "price"), model table shows the three test sets |
+| Batch: paste or CSV, chunks of ten, progress, cancel, export | Partial | `Batch.test.tsx` (7 tests incl. file upload, cancel, failed chunk, export); browser: 12 reviews analysed in two requests (10 + 2). The file picker and the CSV download were not exercised in the browser |
+| Home page, navigation, not-found page | Completed | `App.test.tsx` |
+| Responsive layout, keyboard use | Partial | No sideways overflow at 1366 px on any page. **Phone width not verified** (the browser window would not resize); keyboard-only run not done |
+| Screenshots | Pending | Screenshot capture timed out in the test browser |
 
-## G. NLP analysis
+## G. NLP analysis (sub-project 3)
 
-| Module | Status | Depends on | Tested by | SP |
-|---|---|---|---|---|
-| Non-BERT baseline (noun phrases + sentiment lexicon), scored by the same evaluation | Pending | D | unit tests; row in `results.md` | 3 |
-| Error analysis: missed aspects, confused sentiments, neutral class, mixed sentences | Pending | SP1 models | notebook runs top to bottom | 3 |
-| Cross-domain transfer: laptops-only models on restaurant reviews | Pending; SP1 produces the report it needs | `models/candidates/eval/current/` | numbers come from that report | 3 |
-| Reviews from another product category | Pending; no labelled data in the repo, so qualitative unless you supply a dataset | SP1 models | documented examples | 3 |
-| Notebooks `01_data_exploration`, `02_preprocessing`, `03_model_evaluation` | Pending | A, D; adds Jupyter as a dev dependency | each executes without error | 3 |
+| Module | Status | Evidence |
+|---|---|---|
+| Rule-and-lexicon baseline | Completed | 14 tests; `docs/baseline.md`: aspect F1 0.3765 against 0.8462 for BERT, end-to-end F1 0.2530 against 0.6977 |
+| Error analysis | Completed | 7 tests; `docs/error_analysis.md` generated from the deployed models |
+| Cross-domain transfer (measured) | Completed | `docs/transfer.md`: laptops-only models on restaurants, aspect F1 0.3704 against 0.8715 |
+| Other product categories | Partial | Twelve hand-written reviews in `docs/transfer.md`, as an illustration only. No annotated data, so no accuracy figure |
+| Notebooks 01, 02, 03 | Completed | Each executed top to bottom with `jupyter nbconvert --execute`, no error cells |
 
 ## H. Documentation
 
-| Module | Status | Depends on | Tested by | SP |
-|---|---|---|---|---|
-| `README.md` | Partial: training section and status table describe the old models | SP1 | commands in it are the ones run | 1, then 4 |
-| `docs/architecture.md` | Completed | - | review | - |
-| `docs/methodology.md` | Partial: refers to a results row that does not exist yet | SP1 | review against `results.md` | 1 |
-| `docs/API.md` | Partial: `model-info` example is the old layout | SP1 | review against the live response | 1 |
-| `docs/results.md` | Partial (see D) | SP1 | generated | 1 |
-| `CONTRIBUTING.md`, `frontend/README.md` | Partial: open-task lists will be out of date | SP1 to SP3 | review | each SP |
-| Screenshots of the finished interface | Pending | SP2 | present in README and report | 4 |
+| Module | Status | Evidence |
+|---|---|---|
+| README, CONTRIBUTING, frontend README, training README | Completed | Describe the commands that were run and the current state |
+| Architecture, methodology, API | Completed | Methodology and API updated for the two-domain models |
+| Project report | Completed | `docs/report.md`, generated by `training/report.py` (6 tests); every number read from the evaluation outputs |
+| Slides | Partial | `docs/slides.md` (Marp markdown, 14 slides), generated from the same numbers. Not exported to PowerPoint or PDF; no screenshots |
+| Demo script | Completed | `docs/demo.md`; its steps match what was tested in the browser |
+| Model sharing guide | Completed | `docs/model_sharing.md` |
 
-## I. Delivery
+## I. Delivery (sub-project 4)
 
-| Module | Status | Depends on | Tested by | SP |
-|---|---|---|---|---|
-| Git history | Pending: the repository has zero commits and no remote | your approval | `git log` | 1 (first commit), 4 |
-| Sharing the trained models (3 x 420 MB, not in git) | Pending | SP1 | a teammate can run the app from a fresh clone | 4 |
-| `Dockerfile`s and `docker-compose.yml` | Pending | SP1, SP2 | `docker compose up` serves the app | 4 |
-| Continuous integration (fast tests, frontend build) | Pending | a remote repository | workflow passes | 4 |
-| Project report | Pending | SP1 to SP3 | every number traces to `results.md` | 4 |
-| Presentation slides | Pending | report | review | 4 |
-| Demo data and a demo script | Pending | SP2 | scripted run-through works | 4 |
+| Module | Status | Evidence |
+|---|---|---|
+| Git history | Completed | Branch `feature/models-evaluation`; no weights, datasets or env files tracked |
+| `Dockerfile`s and `docker-compose.yml` | Partial | Written. **Never run**: Docker is not installed on the development machine |
+| Model distribution to teammates | Partial | Procedure documented; the archive has not been created or shared |
+| Continuous integration | Pending | Needs a remote repository |
+
+## J. Still open
+
+1. Run the Docker setup on a machine with Docker.
+2. Check the interface at phone width and with the keyboard only; try the file
+   picker and the CSV download by hand; take screenshots.
+3. Export the slides to the format the presentation requires.
+4. Merge `feature/models-evaluation` into `main`; add a remote; set up CI.
+5. Create and share the model archive.
+6. Decide what to do with `models/candidates`, `models/previous`,
+   `models/sentiment_joint_backup` and `models/train_sentiment_aspect.log`
+   (about 3.5 GB). Nothing has been deleted.
+7. Independent code review of the branch.
 
 ## Open questions
 
-These do not block sub-project 1.
+1. The docs mention "the project plan", but no synopsis or marking scheme is
+   in the repository. Add it so this checklist can be checked against it.
+2. Required format, template and length of the report and the slides.
+3. Is annotated data for another product category available?
 
-1. The docs mention "the project plan" (suggested components, notebook names),
-   but no such document is in the repository. If a synopsis or marking scheme
-   exists, add it so the checklist can be checked against it.
-2. Report and slides: required format, template, length and deadline.
-3. Is there a labelled review dataset for another product category, or is a
-   qualitative test enough?
-4. How will teammates receive the models: shared drive, or a hosted model
-   repository?
+## Known limitations of the result
+
+- Neutral is the weakest sentiment class and sentences that mix sentiments are
+  the hardest case (accuracy 0.6616 against 0.8507 for uniform sentences).
+- One training run, one seed. The deployed models were chosen by comparing
+  test scores, which makes the reported scores slightly optimistic.
+- In the illustration on other product categories the pipeline made visible
+  mistakes, for example "room" marked negative in "The room was spotless".

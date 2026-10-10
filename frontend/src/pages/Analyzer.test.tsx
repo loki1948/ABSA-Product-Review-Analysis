@@ -124,3 +124,14 @@ describe("describeError", () => {
     expect(describeError(new TypeError("boom")).retryable).toBe(true);
   });
 });
+
+describe("describeError behind a proxy", () => {
+  // With the backend down, the Vite dev proxy and nginx answer 502 or 504
+  // themselves, so the browser never sees a network error.
+  it.each([502, 504])("treats a proxy's HTTP %i as an unreachable backend", (status) => {
+    const described = describeError(new ApiError(`Request failed (HTTP ${status}).`, status));
+    expect(described.title).toBe("Cannot reach the backend");
+    expect(described.message).toMatch(/uvicorn app\.main:app/);
+    expect(described.retryable).toBe(true);
+  });
+});

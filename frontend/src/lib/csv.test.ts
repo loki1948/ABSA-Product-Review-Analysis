@@ -84,3 +84,17 @@ describe("toCsv", () => {
     expect(rows[1]).toEqual(['The "retina" screen, wow', "positive", "", "", ""]);
   });
 });
+
+describe("parseReviews with trailing blank lines", () => {
+  it("does not report empty lines at the end of the file as skipped rows", () => {
+    expect(parseReviews("review\nGood screen\n\n\n")).toEqual({
+      reviews: ["Good screen"],
+      skipped: [],
+      truncated: false,
+    });
+  });
+
+  it("still reports a blank line between reviews", () => {
+    expect(parseReviews("Good\n\nFine\n\n").skipped).toEqual([{ line: 2, reason: "blank" }]);
+  });
+});

@@ -49,7 +49,8 @@ export function chartColor(sentiment: Sentiment): string {
   return CHART[sentiment];
 }
 
-/** 0.954 -> "95%" */
+/** 0.954 -> "95%". Only an exact 1 is shown as 100%: 0.997 is "99%", not certainty. */
 export function percent(value: number): string {
-  return `${Math.round(value * 100)}%`;
+  const rounded = Math.round(value * 100);
+  return `${value < 1 ? Math.min(rounded, 99) : rounded}%`;
 }
