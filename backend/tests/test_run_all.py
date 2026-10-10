@@ -125,3 +125,12 @@ def test_status_reports_done_running_and_pending(tmp_path: Path) -> None:
     assert status(steps, log_dir)[:3] == [
         ("aspect", "done"), ("sentiment", "running"), ("overall", "pending"),
     ]
+
+
+def test_keep_awake_also_keeps_the_display_on() -> None:
+    # On laptops with Modern Standby, the display switching off after the idle
+    # timeout puts the machine to sleep even while "system required" is set.
+    from training.run_all import AWAKE_FLAGS
+
+    es_continuous, es_system_required, es_display_required = 0x80000000, 0x1, 0x2
+    assert AWAKE_FLAGS == es_continuous | es_system_required | es_display_required

@@ -145,20 +145,30 @@ def status(steps: list[Step], log_dir: Path) -> list[tuple[str, str]]:
     return result
 
 
+# ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED. The display flag
+# matters: on laptops with Modern Standby the screen switching off after the
+# idle timeout suspends the machine even while "system required" is set (this
+# froze a run for hours).
+AWAKE_FLAGS = 0x80000000 | 0x00000001 | 0x00000002
+_ES_CONTINUOUS = 0x80000000
+
+
 @contextmanager
 def keep_awake() -> Iterator[None]:
-    """Stop Windows from sleeping while training runs (closing the lid still suspends)."""
+    """Keep Windows and its display awake while training runs.
+
+    Closing the lid or pressing the power button still suspends the machine.
+    """
     if sys.platform != "win32":
         yield
         return
     import ctypes
 
-    es_continuous, es_system_required = 0x80000000, 0x00000001
-    ctypes.windll.kernel32.SetThreadExecutionState(es_continuous | es_system_required)
+    ctypes.windll.kernel32.SetThreadExecutionState(AWAKE_FLAGS)
     try:
         yield
     finally:
-        ctypes.windll.kernel32.SetThreadExecutionState(es_continuous)
+        ctypes.windll.kernel32.SetThreadExecutionState(_ES_CONTINUOUS)
 
 
 def _last_line(path: Path) -> str:

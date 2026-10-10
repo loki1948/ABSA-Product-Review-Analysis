@@ -32,7 +32,9 @@ python -m training.evaluate           # 5. rewrite docs/results.md for the insta
   evaluation). Starting `run_all` again skips complete steps; a training step
   that was interrupted starts over. If the process was killed, delete
   `models/candidates/logs/run_all.lock` first.
-- It keeps Windows awake while it runs. Closing the laptop lid still suspends.
+- It keeps Windows and the display awake while it runs. Closing the laptop lid
+  still suspends the machine, and a suspended machine does not train: keep it
+  plugged in with the lid open.
 - `promote` decides per model with one metric, on the laptops and restaurants
   test sets: span F1 for aspect extraction, macro-F1 for both sentiment
   models. A candidate qualifies when that metric is higher on both domains
