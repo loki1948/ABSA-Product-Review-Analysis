@@ -1,127 +1,156 @@
 # Full-project checklist
 
-Status of every module on 2026-10-10, with the evidence for it. Status is
-**Completed** (built and verified as described), **Partial** (built, with a
-named gap) or **Pending**.
+State on 2026-10-10. **The project is not declared 100% complete**: the
+assignment's own requirements could not be checked (section 1), Docker has not
+been run, and the items in section 4 are open.
 
-**The project is not 100% complete.** Section J lists what is still open.
+How to read the tables:
 
-## A. Data
+- **Implemented**: the code or document exists on `feature/models-evaluation`.
+- **Tested**: how it was verified, with the evidence.
+- **Reviewed**: "yes" means an independent reviewer (a separate reviewer with
+  no part in writing the code) examined it on 2026-10-10. "fix" means it was
+  changed afterwards in response to that review; those changes are covered by
+  new tests but have **not** been reviewed a second time.
 
-| Module | Status | Evidence |
-|---|---|---|
-| Dataset download, validation, split, leakage check | Completed | `tests/test_dataset.py`; notebook 01 repeats the leakage check (0 shared sentences) |
-| Dataset statistics | Completed | `data/processed/dataset_stats.json`; tables in notebook 01 and the report |
-| Sample reviews for demo and transfer illustration | Completed | `data/samples/demo_reviews.csv`, `data/samples/other_domains.csv` |
+Test totals at the last run: backend `pytest` 139 passed, 0 skipped, 0 failed
+(including 10 tests on the real models); frontend `npm test` 103 passed;
+`npm run build` passes.
 
-## B. NLP core
+## 1. Assignment requirements
 
-| Module | Status | Evidence |
-|---|---|---|
-| Preprocessing: cleaning, sentences, tokens, BIO, context | Completed | `tests/test_preprocessing.py`; notebook 02. Fixed: punctuation-only fragments ("!!") no longer count as sentences |
-| Aspect extraction, sentiment, pipeline | Completed | `tests/test_aspect.py`, `test_sentiment.py`, `test_pipeline.py`, including 7 tests on the real models |
+No synopsis, assignment brief or marking scheme exists in the repository (no
+PDF, Word or PowerPoint file anywhere outside `docs/submission`, and no mention
+of one in any tracked file). The only statements of intent are the project
+title and the scaffold's own notes in the first commit, so the comparison below
+is against those. **Mandatory assignment requirements remain unverified until
+the brief is provided.**
 
-## C. Models (sub-project 1)
+| Requirement found in the repository | Source | Implemented | Tested |
+|---|---|---|---|
+| Aspect-based sentiment analysis of product reviews with NLP | Project title | Yes | Sections 2.2 to 2.4 |
+| Both stages are learnt models, no hard-coded aspect list, no external sentiment API | First commit, `CONTRIBUTING.md` | Yes | `test_model_finds_an_aspect_it_was_never_given_a_list_of`; the baseline lives outside `app/` |
+| Components `ReviewInput`, `SentimentCard`, `AspectTable`, `SentimentChart` | First commit, `frontend/README.md` | Yes (`SentimentChart` is `AspectSentimentChart`) | Component tests |
+| Pages Home, Analyzer, History, Dashboard | First commit | Yes, plus Batch | Page tests, browser run |
+| Notebooks `01_data_exploration`, `02_preprocessing`, `03_model_evaluation` | First commit, `CONTRIBUTING.md` | Yes | Each executed without error |
+| Retrain on both domains; non-BERT baseline; error analysis; another product category | First commit, open-work list | Yes; the other category is an illustration only | Section 2.6 |
+| CSV upload using the batch endpoint; `docker-compose.yml`; report and slides | First commit, open-work list | Yes | Docker **not run** |
+| Stated technology: PyTorch, Transformers, scikit-learn, NLTK, pandas, FastAPI, SQLAlchemy, React, TypeScript, Tailwind, Recharts | First commit, `README.md` | All in use | Suites above |
 
-| Module | Status | Evidence |
-|---|---|---|
-| Aspect-extraction model, both domains | Completed | `models/aspect_extraction/training_log.json`: best epoch 3, validation F1 0.8312. Test F1 0.8462 |
-| Aspect-sentiment model, both domains | Completed | best epoch 3, validation macro-F1 0.7574. Test accuracy 0.8151, macro-F1 0.7456 |
-| Overall-sentiment model, both domains | Completed | best epoch 4, validation macro-F1 0.7363. Test macro-F1 0.7202 (weak labels) |
-| Resumable training chain (`training/run_all.py`) | Completed | 14 tests; smoke run passed in 3 min 17 s; full run finished 2026-10-10 09:30 |
-| Comparison and promotion (`training/promote.py`) | Completed | 12 tests; all three candidates met the rule on laptops and restaurants; the comparison is reproduced by `python -m training.promote`; the laptops-only side is in `docs/transfer.md` |
-| Previous models preserved | Completed | `models/previous/aspect_extraction-20261010-093116`, `models/previous/sentiment-20261010-093116`; `models/sentiment_joint_backup` and `models/train_sentiment_aspect.log` unchanged; `models/candidates` kept |
+## 2. Modules
 
-## D. Evaluation (sub-project 1)
+### 2.1 Data and preprocessing
 
-| Module | Status | Evidence |
-|---|---|---|
-| `docs/results.md`, `models/evaluation_report.json` | Completed | Generated 2026-10-10 from the deployed models, both domains, with the mixed-sentence breakdown |
-| Two confusion-matrix figures | Completed | `docs/figures/sentiment_confusion_matrix.png`, `overall_confusion_matrix.png` |
-| Report describes the deployed models | Completed | `test_report_describes_the_deployed_models` passes; `/api/model-info` returned both domains in the browser test |
-| Real-model tests | Completed | `pytest`: 120 passed, 0 skipped, 0 failed (was 10 skipped) |
+| Module | Implemented | Tested | Reviewed |
+|---|---|---|---|
+| Dataset download, validation, split | Yes | `test_dataset.py`; 0 sentences shared between splits (notebook 01 and reviewer's own check) | yes |
+| Preprocessing, BIO tags, context | Yes | `test_preprocessing.py`; notebook 02 | yes |
 
-## E. Backend API
+### 2.2 Models and training
 
-| Module | Status | Evidence |
-|---|---|---|
-| Analyze (single, batch), history, statistics, health, model info | Completed | `tests/test_api.py` (stubs) plus two tests through the real models; exercised from the browser |
-| Validation and error shape, storage, configuration, CORS | Completed | `tests/test_api.py`, `tests/test_database.py` |
+| Module | Implemented | Tested | Reviewed |
+|---|---|---|---|
+| Three BERT models on both domains | Yes | Test set: aspect F1 0.8462; aspect sentiment accuracy 0.8151, macro-F1 0.7456; end-to-end F1 0.6977; overall macro-F1 0.7202 | yes: published numbers match the report files |
+| Training chain `run_all` | Yes | 19 tests; one full run completed | fix: stale evaluations are detected, a fresh clone can finish, the lock names its owner, the display is kept awake |
+| Promotion `promote` | Yes | 16 tests; all three candidates met the rule on both domains | fix: never deletes a folder that holds more than the placeholder; installs by rename; compares only with models the report describes |
+| `--limit` trial runs | Yes | `test_limit_cannot_overwrite_published_or_deployed_outputs` | fix: refused on real output paths |
 
-## F. Frontend (sub-project 2)
+### 2.3 Evaluation
 
-Automated: `npm test` 87 passed; `npm run build` passes. Browser: one session
-on 2026-10-10 in Chrome against the real backend and models, driven by script
-(DOM events and DOM reads; see "Not verified" below).
+| Module | Implemented | Tested | Reviewed |
+|---|---|---|---|
+| `results.md`, `evaluation_report.json`, two confusion matrices | Yes | Generated from the deployed models; `test_report_describes_the_deployed_models` | yes |
+| `/api/model-info` serves that report | Yes | Browser run showed the three test sets | yes |
 
-| Module | Status | Evidence |
-|---|---|---|
-| Review-input workflow (examples, counter, blank guard, save toggle, Ctrl+Enter) | Completed | `ReviewInput.test.tsx`; browser: blank input disables the button, 5000-character limit applied |
-| Overall sentiment and aspect-level results, highlighting, per-review chart, comparison sentence | Completed | `AnalysisResult.test.tsx`; browser: laptop review gave screen and keyboard positive, battery life negative; restaurant review gave pasta and staff positive, prices negative |
-| Empty state (no aspects) | Completed | Test; browser: "It arrived on Tuesday." shows the no-aspects message and still shows the overall label |
-| Error handling: backend unreachable, models not loaded, invalid input, server error | Completed | `Analyzer.test.tsx`, `App.test.tsx`; browser: both states checked on every page. Found and fixed: behind the dev proxy a stopped backend answers HTTP 502, which was shown as a server error |
-| History: list, pagination, filter, full analysis, delete with confirmation | Completed | `History.test.tsx`; browser: 15 reviews paged 10 + 5, negative filter, expand, cancel, delete |
-| Dashboard: summary, three charts, model performance | Completed | `Dashboard.test.tsx`; browser: charts drawn, aspects grouped ("prices" counted under "price"), model table shows the three test sets |
-| Batch: paste or CSV, chunks of ten, progress, cancel, export | Partial | `Batch.test.tsx` (7 tests incl. file upload, cancel, failed chunk, export); browser: 12 reviews analysed in two requests (10 + 2). The file picker and the CSV download were not exercised in the browser |
-| Home page, navigation, not-found page | Completed | `App.test.tsx` |
-| Responsive layout, keyboard use | Partial | No sideways overflow at 1366 px on any page. **Phone width not verified** (the browser window would not resize); keyboard-only run not done |
-| Screenshots | Pending | Screenshot capture timed out in the test browser |
+### 2.4 Backend API
 
-## G. NLP analysis (sub-project 3)
+| Module | Implemented | Tested | Reviewed |
+|---|---|---|---|
+| Analyze, batch, history, statistics, health, model info | Yes | `test_api.py` with stubs and with the real models | yes: no SQL injection, sessions closed, contract matches the frontend |
 
-| Module | Status | Evidence |
-|---|---|---|
-| Rule-and-lexicon baseline | Completed | 14 tests; `docs/baseline.md`: aspect F1 0.3765 against 0.8462 for BERT, end-to-end F1 0.2530 against 0.6977 |
-| Error analysis | Completed | 7 tests; `docs/error_analysis.md` generated from the deployed models |
-| Cross-domain transfer (measured) | Completed | `docs/transfer.md`: laptops-only models on restaurants, aspect F1 0.3704 against 0.8715 |
-| Other product categories | Partial | Twelve hand-written reviews in `docs/transfer.md`, as an illustration only. No annotated data, so no accuracy figure |
-| Notebooks 01, 02, 03 | Completed | Each executed top to bottom with `jupyter nbconvert --execute`, no error cells |
+### 2.5 Frontend
 
-## H. Documentation
+| Module | Implemented | Tested | Reviewed |
+|---|---|---|---|
+| Analyzer: input workflow, overall and aspect results, highlighting | Yes | Component and page tests; browser: laptop and restaurant reviews, no-aspect case, keyboard only (Ctrl+Enter, Tab, Space, Enter) | yes |
+| Error states: backend unreachable, models not loaded, invalid input, server error | Yes | Tests; browser on every page | yes |
+| History: paging, filter, full analysis, delete | Yes | `History.test.tsx`; browser | yes |
+| Dashboard and model performance | Yes | `Dashboard.test.tsx`; browser | yes |
+| Batch: paste or CSV, chunks, progress, cancel, export | Yes | 12 tests; browser: real file upload of `demo_reviews.csv` (12 reviews), real download of `absa-results.csv` (28 data rows) | fix: formula characters neutralised in the export; pasted reviews kept whole; continues instead of resending; stops when the page is left |
+| Phone width (390 px) | Yes | Scripted browser check on all five pages: no sideways scrolling, nothing cut off. Found and fixed an overflow on Home, Analyzer and History | not reviewed (reviewer had no browser) |
+| Screenshots | Yes | `docs/screenshots` (11 images) from `frontend/scripts/browser-checks.mjs` | not applicable |
 
-| Module | Status | Evidence |
-|---|---|---|
-| README, CONTRIBUTING, frontend README, training README | Completed | Describe the commands that were run and the current state |
-| Architecture, methodology, API | Completed | Methodology and API updated for the two-domain models |
-| Project report | Completed | `docs/report.md`, generated by `training/report.py` (6 tests); every number read from the evaluation outputs |
-| Slides | Partial | `docs/slides.md` (Marp markdown, 14 slides), generated from the same numbers. Not exported to PowerPoint or PDF; no screenshots |
-| Demo script | Completed | `docs/demo.md`; its steps match what was tested in the browser |
-| Model sharing guide | Completed | `docs/model_sharing.md` |
+### 2.6 NLP analysis
 
-## I. Delivery (sub-project 4)
+| Module | Implemented | Tested | Reviewed |
+|---|---|---|---|
+| Rule-and-lexicon baseline | Yes | 14 tests; `docs/baseline.md`: aspect F1 0.3765 against 0.8462 | yes: same data and metric functions, supports match exactly |
+| Error analysis | Yes | 11 tests; `docs/error_analysis.md` | yes |
+| Transfer to an unseen domain | Yes | `docs/transfer.md`: laptops-only aspect extractor on restaurants, F1 0.3704 against 0.8715 | fix: the comparison is now limited to aspect extraction. The earlier sentiment model has no training record, so no claim is made from it |
+| Other product categories | Illustration only | Twelve hand-written reviews; no annotated data, no accuracy figure | yes |
+| Notebooks | Yes | All three execute without error | partly (contents not judged) |
 
-| Module | Status | Evidence |
-|---|---|---|
-| Git history | Completed | Branch `feature/models-evaluation`; no weights, datasets or env files tracked |
-| `Dockerfile`s and `docker-compose.yml` | Partial | Written. **Never run**: Docker is not installed on the development machine |
-| Model distribution to teammates | Partial | Procedure documented; the archive has not been created or shared |
-| Continuous integration | Pending | Needs a remote repository |
+### 2.7 Documentation and submission files
 
-## J. Still open
+| Module | Implemented | Tested | Reviewed |
+|---|---|---|---|
+| README, CONTRIBUTING, architecture, methodology, API | Yes | Commands are the ones that were run | fix: methodology no longer quotes two figures that no report file contains |
+| Report source `docs/report.md`, slides source `docs/slides.md` | Yes | Generated by `training/report.py` (6 tests) from the report files | yes: every 4-decimal figure traced to a report file |
+| `docs/submission/ABSA_Project_Report.docx` and `.pdf` | Yes | Built by `training/export.py` (7 tests) and Word; 29 pages; includes appendices A to D and four screenshots | Layout not proofread by a person |
+| `docs/submission/ABSA_Presentation.pptx` and `.pdf` | Yes | 18 slides, four of them screenshots; two slides inspected as images | Plain default design; not proofread by a person |
+| Demo script, model sharing, model recovery | Yes | Demo steps match the browser run | not reviewed |
 
-1. Run the Docker setup on a machine with Docker.
-2. Check the interface at phone width and with the keyboard only; try the file
-   picker and the CSV download by hand; take screenshots.
-3. Export the slides to the format the presentation requires.
-4. Merge `feature/models-evaluation` into `main`; add a remote; set up CI.
-5. Create and share the model archive.
-6. Decide what to do with `models/candidates`, `models/previous`,
-   `models/sentiment_joint_backup` and `models/train_sentiment_aspect.log`
-   (about 3.5 GB). Nothing has been deleted.
-7. Independent code review of the branch.
+### 2.8 Delivery
 
-## Open questions
+| Module | Implemented | Tested | Reviewed |
+|---|---|---|---|
+| Git branch | Yes | Clean tree; no weights, datasets or env files tracked | yes |
+| CI workflow `.github/workflows/ci.yml` | Yes | **Not run**: the repository has no remote | no |
+| Model archive | Yes | `absa-models.zip` (1.14 GB) with SHA-256 file, made by `scripts/package_models.ps1`; weights sizes match the deployed ones | no |
+| Docker | Written | **Never run**: Docker is not installed here | static reading only |
 
-1. The docs mention "the project plan", but no synopsis or marking scheme is
-   in the repository. Add it so this checklist can be checked against it.
-2. Required format, template and length of the report and the slides.
-3. Is annotated data for another product category available?
+## 3. Independent review: what remains
 
-## Known limitations of the result
+Fixed: all 11 "Important" findings (sections above, marked "fix").
+Not fixed, recorded as minor:
 
-- Neutral is the weakest sentiment class and sentences that mix sentiments are
-  the hardest case (accuracy 0.6616 against 0.8507 for uniform sentences).
-- One training run, one seed. The deployed models were chosen by comparing
+- Tracked report files contain the local path `C:\Users\Admin\...` in the
+  training logs' `output_dir`, and `/api/model-info` serves it.
+- No request-body size limit when running plain uvicorn.
+- `clean_text` removes text between `<` and `>` ("battery <3 hours, screen >13
+  inch"); a review consisting only of a tag is stored as empty text.
+- A batch that fails on saving can leave earlier reviews saved.
+- `requirements.txt` gives minimum versions only; there is no lock file.
+- Docker: the health check allows about 135 seconds for loading the models;
+  the backend container runs as root.
+- `ConfirmDialog` has no focus trap; an out-of-range `?page=` in History shows
+  the empty message; the Analyzer reads the health status only once.
+- The baseline finds an aspect's clause by text search, a small handicap for
+  the baseline.
+- The report's concluding sentences are fixed text and would not follow
+  different numbers after a retrain.
+
+## 4. Pending
+
+1. **Provide the assignment brief or marking scheme**, so section 1 can be
+   checked against the real requirements.
+2. **Run Docker** on a machine that has it: `docker compose up --build`, open
+   http://localhost:8080, analyse one review, check History and Dashboard.
+3. **Push to a remote** so CI runs once; merge into `main` after that.
+4. **Copy `absa-models.zip` and its `.sha256` off this machine**; until then
+   every copy of the models is on one disk.
+5. A person should proofread the DOCX and the slides and restyle the slides if
+   a template is required.
+6. Decide on removing the 2.44 GB of model backups
+   ([model_recovery.md](model_recovery.md) lists what each removal costs).
+7. The fixes made after the review have not been reviewed a second time.
+
+## 5. Known limitations of the result
+
+- Neutral is the weakest sentiment class, and sentences that mix sentiments
+  are the hardest case (accuracy 0.6616 against 0.8507 for uniform sentences).
+- One training run, one seed; the deployed models were chosen by comparing
   test scores, which makes the reported scores slightly optimistic.
-- In the illustration on other product categories the pipeline made visible
-  mistakes, for example "room" marked negative in "The room was spotless".
+- On hand-written reviews of other product categories the pipeline makes
+  visible mistakes, for example "room" marked negative in "The room was
+  spotless".

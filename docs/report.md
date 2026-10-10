@@ -10,8 +10,9 @@ Evaluation date: 2026-10-10T05:00:39+00:00. Test data: SemEval-2014 Task 4 gold 
 Traditional sentiment analysis assigns one label to a whole review, although a review
 usually praises some features of a product and criticises others. This project builds
 a system that extracts the product aspects mentioned in a review and classifies the
-sentiment towards each one. Two fine-tuned BERT models are used: a token classifier
+sentiment towards each one. Two fine-tuned BERT models do this: a token classifier
 that tags aspect terms and a sentence-pair classifier that judges one aspect at a time.
+A third model gives the traditional single label for comparison.
 On the SemEval-2014 test sets (laptops, restaurants) the system reaches an aspect-extraction
 F1 of 0.8462, an aspect-sentiment accuracy of 0.8151 (macro-F1 0.7456)
 and an end-to-end F1 of 0.6977. A rule-and-lexicon baseline scored on the same data reaches an aspect-extraction F1 of 0.3765 and an end-to-end F1 of 0.2530.
@@ -93,6 +94,14 @@ report. The web interface has five pages: an introduction, the analyzer (highlig
 aspects, a table with sentiment and confidence, and the overall label), batch analysis of
 CSV files with export, the review history, and a dashboard with charts and the models'
 test metrics. Architecture: [architecture.md](architecture.md). Endpoints: [API.md](API.md).
+
+![The analyzer: overall label, highlighted aspects and the aspect table](screenshots/analyzer-result.png)
+
+![Batch analysis of a CSV file](screenshots/batch-results.png)
+
+![Review history with one analysis opened](screenshots/history.png)
+
+![Dashboard: aggregate charts and the models' test metrics](screenshots/dashboard.png)
 
 ## 5. Experimental setup
 
@@ -198,9 +207,11 @@ Details: [baseline.md](baseline.md).
 
 ### 6.4 Transfer to an unseen domain
 
-The first models of the project were trained on laptop reviews only. Their scores on the
-restaurant test set measure transfer to a product category absent from training; the
-deployed models were trained on both domains.
+The first aspect-extraction model of the project was trained on laptop reviews only,
+with the same settings as the deployed one. Its scores on the restaurant test set measure
+transfer to a product category absent from training. Sentiment scores are not compared:
+the earlier laptops-only sentiment model has no training record, so a difference could
+not be attributed to the training domains.
 
 **Restaurants test set**
 
@@ -209,11 +220,6 @@ deployed models were trained on both domains.
 | Aspect extraction precision | 0.8923 | 0.8475 | -0.0448 |
 | Aspect extraction recall | 0.2337 | 0.8968 | +0.6631 |
 | Aspect extraction F1 | 0.3704 | 0.8715 | +0.5011 |
-| Aspect sentiment accuracy | 0.7696 | 0.8384 | +0.0687 |
-| Aspect sentiment macro-F1 | 0.5524 | 0.7528 | +0.2004 |
-| Overall sentiment accuracy | 0.7917 | 0.8300 | +0.0383 |
-| Overall sentiment macro-F1 | 0.6724 | 0.7074 | +0.0351 |
-| End-to-end F1 | 0.3182 | 0.7355 | +0.4173 |
 
 **Laptops test set**
 
@@ -222,11 +228,6 @@ deployed models were trained on both domains.
 | Aspect extraction precision | 0.7864 | 0.7868 | +0.0004 |
 | Aspect extraction recall | 0.7936 | 0.8180 | +0.0245 |
 | Aspect extraction F1 | 0.7900 | 0.8021 | +0.0121 |
-| Aspect sentiment accuracy | 0.7069 | 0.7743 | +0.0674 |
-| Aspect sentiment macro-F1 | 0.5796 | 0.7322 | +0.1525 |
-| Overall sentiment accuracy | 0.7956 | 0.7956 | +0.0000 |
-| Overall sentiment macro-F1 | 0.7238 | 0.7310 | +0.0073 |
-| End-to-end F1 | 0.5612 | 0.6308 | +0.0696 |
 
 Details and examples from other product categories: [transfer.md](transfer.md).
 

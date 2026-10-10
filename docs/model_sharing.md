@@ -16,18 +16,19 @@ models/overall_sentiment/
 The person who trained the models, from the project folder:
 
 ```powershell
-Compress-Archive -Path models\aspect_extraction, models\sentiment, models\overall_sentiment -DestinationPath absa-models.zip
-Get-FileHash absa-models.zip -Algorithm SHA256
+.\scripts\package_models.ps1
 ```
 
-Upload `absa-models.zip` (about 1.2 GB) to the team's shared drive and post the
-hash in the team chat. Everyone else downloads it and runs, from the project
-folder:
+This writes `absa-models.zip` (about 1.1 GB) and `absa-models.zip.sha256`.
+Upload both to the team's shared drive. Everyone else downloads both into the
+project folder and runs:
 
 ```powershell
-Get-FileHash absa-models.zip -Algorithm SHA256      # must equal the posted hash
-Expand-Archive absa-models.zip -DestinationPath models -Force
+.\scripts\package_models.ps1 -Install absa-models.zip
 ```
+
+The script checks the hash before unpacking and refuses to overwrite a model
+folder that already holds a model.
 
 ## Option 2: train them yourself
 

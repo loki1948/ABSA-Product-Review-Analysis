@@ -29,6 +29,9 @@ This project:  screen -> positive    keyboard -> positive    battery life -> neg
 | Non-BERT baseline, error analysis, transfer study | Done, see [docs/baseline.md](docs/baseline.md), [docs/error_analysis.md](docs/error_analysis.md), [docs/transfer.md](docs/transfer.md) |
 | Notebooks | Done, see `notebooks/` |
 | Project report and slides | Done, see [docs/report.md](docs/report.md), [docs/slides.md](docs/slides.md) |
+| Submission files (DOCX, PDF, PPTX) | Done, see [docs/submission](docs/submission/README.md) |
+| Independent code review | Done; findings and what remains are in the checklist |
+| CI workflow | Written, **not yet run** (no remote repository) |
 | Docker setup | Written, **not yet run** (Docker is not installed on the development machine) |
 
 Every module with its status and how it is tested:
@@ -55,6 +58,7 @@ review -> preprocessing -> BERT aspect extraction -> aspect + context pairing
 | [docs/report.md](docs/report.md), [docs/slides.md](docs/slides.md) | Project report and presentation (generated) |
 | [docs/demo.md](docs/demo.md) | Five-minute demo script |
 | [docs/model_sharing.md](docs/model_sharing.md) | How teammates get the trained models |
+| [docs/model_recovery.md](docs/model_recovery.md) | Checking the models and getting them back |
 
 ## Repository layout
 

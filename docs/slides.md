@@ -108,14 +108,13 @@ Baseline: noun phrases as aspects, opinion-word lexicon for sentiment. Same data
 
 ## Transfer to an unseen domain
 
-Restaurant test set: models trained on laptops only against models trained on both domains.
+Restaurant test set: an aspect extractor trained on laptops only against the one trained on both domains.
 
 | Metric | Trained on laptops only | Trained on both |
 |---|---|---|
+| Aspect extraction precision | 0.892 | 0.848 |
+| Aspect extraction recall | 0.234 | 0.897 |
 | Aspect extraction F1 | 0.370 | 0.871 |
-| Aspect sentiment accuracy | 0.770 | 0.838 |
-| Aspect sentiment macro-F1 | 0.552 | 0.753 |
-| End-to-end F1 | 0.318 | 0.735 |
 
 ---
 
