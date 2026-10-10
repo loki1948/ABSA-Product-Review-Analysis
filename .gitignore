@@ -35,3 +35,8 @@ Thumbs.db
 
 # Assistant working notes (progress ledger)
 .superpowers/
+
+# Model archive made by scripts/package_models.ps1
+absa-models.zip
+absa-models.zip.sha256
+*.incoming/

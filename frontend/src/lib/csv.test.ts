@@ -53,10 +53,10 @@ describe("parseReviews", () => {
     expect(parseReviews("")).toEqual({ reviews: [], skipped: [], truncated: false });
   });
 
-  it("uses the first column when a multi-column header has no review column", () => {
+  it("reads every line as one review when no column is named review or text", () => {
     expect(parseReviews("comment,stars\nGreat screen,5\n").reviews).toEqual([
-      "comment",
-      "Great screen",
+      "comment,stars",
+      "Great screen,5",
     ]);
   });
 });

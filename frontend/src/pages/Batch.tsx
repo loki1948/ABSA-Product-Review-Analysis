@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 
 import SentimentBadge from "../components/SentimentBadge";
 import StateMessage from "../components/StateMessage";
@@ -29,11 +29,29 @@ export default function Batch() {
   const [results, setResults] = useState<AnalysisResponse[]>([]);
   const [target, setTarget] = useState(0);
   const [error, setError] = useState<ErrorDescription | null>(null);
+  const [stopping, setStopping] = useState(false);
   const cancelled = useRef(false);
+  /** True when Cancel was pressed (as opposed to the page being left). */
+  const stoppedByUser = useRef(false);
+  /** The reviews of the last run, to tell "continue" from "start again". */
+  const lastRun = useRef<string[]>([]);
+
+  // Leaving the page must stop the run: otherwise it keeps posting (and saving) chunks.
+  useEffect(
+    () => () => {
+      cancelled.current = true;
+    },
+    [],
+  );
 
   const parsed = useMemo(() => parseReviews(text), [text]);
   const count = parsed.reviews.length;
   const running = status === "running";
+  // After a stop, the same list can be continued where it stopped, so reviews
+  // that were already analysed (and saved) are not sent a second time.
+  const sameList =
+    lastRun.current.length === count && lastRun.current.every((review, i) => review === parsed.reviews[i]);
+  const remaining = status === "stopped" && sameList ? count - results.length : 0;
 
   async function handleFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -43,18 +61,22 @@ export default function Batch() {
 
   async function run() {
     const reviews = parsed.reviews;
+    const collected: AnalysisResponse[] = remaining > 0 ? [...results] : [];
+    lastRun.current = reviews;
     cancelled.current = false;
-    setResults([]);
+    stoppedByUser.current = false;
+    setStopping(false);
+    setResults(collected);
     setTarget(reviews.length);
     setError(null);
     setStatus("running");
 
-    const collected: AnalysisResponse[] = [];
-    for (let start = 0; start < reviews.length; start += CHUNK_SIZE) {
+    for (let start = collected.length; start < reviews.length; start += CHUNK_SIZE) {
       if (cancelled.current) break;
       try {
         const response = await analyzeReviews(reviews.slice(start, start + CHUNK_SIZE), save);
         collected.push(...response.items);
+        if (cancelled.current && !stoppedByUser.current) return; // the page was left
         setResults([...collected]);
       } catch (reason) {
         // Keep what has been analysed so far: it can still be read and exported.
@@ -62,7 +84,14 @@ export default function Batch() {
         break;
       }
     }
+    setStopping(false);
     setStatus(collected.length === reviews.length ? "finished" : "stopped");
+  }
+
+  function cancel() {
+    stoppedByUser.current = true;
+    cancelled.current = true;
+    setStopping(true);
   }
 
   return (
@@ -136,15 +165,18 @@ export default function Batch() {
             disabled={running || count === 0}
             className="rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Analyze {count} {count === 1 ? "review" : "reviews"}
+            {remaining > 0
+              ? `Continue with the remaining ${remaining}`
+              : `Analyze ${count} ${count === 1 ? "review" : "reviews"}`}
           </button>
           {running && (
             <button
               type="button"
-              onClick={() => (cancelled.current = true)}
-              className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm hover:border-red-600 hover:text-red-700"
+              onClick={cancel}
+              disabled={stopping}
+              className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm hover:border-red-600 hover:text-red-700 disabled:opacity-60"
             >
-              Cancel
+              {stopping ? "Stopping…" : "Cancel"}
             </button>
           )}
           <label className="flex items-center gap-2 text-sm text-slate-700">

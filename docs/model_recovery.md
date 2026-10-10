@@ -1,0 +1,68 @@
+# Model integrity and recovery
+
+What is on disk, how to check it, and how to get a working set of models back.
+Nothing here is in git: model folders are too large (see
+[model_sharing.md](model_sharing.md) for passing them to teammates).
+
+## What exists (checked 2026-10-10)
+
+| Folder under `models/` | Content | Size | Needed to run the app |
+|---|---|---|---|
+| `aspect_extraction`, `sentiment`, `overall_sentiment` | The deployed models, trained on both domains | 1.22 GB | Yes |
+| `candidates/aspect_extraction`, `candidates/sentiment`, `candidates/overall_sentiment` | The same three models as `run_all` wrote them, before promotion | 1.22 GB | No: byte-identical copies of the deployed models |
+| `candidates/eval`, `candidates/logs` | Evaluation reports and training logs of that run | under 1 MB | No, but they are the record of the run |
+| `previous/aspect_extraction-20261010-093116` | The earlier aspect model, laptops only (has its training log) | 0.41 GB | No |
+| `previous/sentiment-20261010-093116` | The earlier sentiment model: a checkpoint from an interrupted run, no training log | 0.41 GB | No |
+| `sentiment_joint_backup` | The first, joint sentiment model with its own evaluation report | 0.41 GB | No |
+| `train_sentiment_aspect.log` | Log of a retrain that died on 2026-10-08 | 1 KB | No |
+
+Tracked in git and sufficient to reproduce every published number's source:
+`models/evaluation_report.json`, `models/baseline_report.json`,
+`models/laptops_only_report.json`.
+
+## Check the deployed models
+
+```powershell
+cd backend
+python -m pytest -m model        # 10 tests: models load, analyse, and match the published report
+```
+
+`test_report_describes_the_deployed_models` fails if any of the three folders
+is not the model the committed evaluation report was computed from.
+
+To compare the deployed weights with a copy, file by file:
+
+```powershell
+foreach ($m in "aspect_extraction","sentiment","overall_sentiment") {
+  (Get-FileHash models\$m\model.safetensors).Hash -eq (Get-FileHash models\candidates\$m\model.safetensors).Hash
+}
+```
+
+Three times `True` means the copy is intact. This was the result on 2026-10-10
+for the weights, config, tokenizer and training log of all three models.
+
+## Recover
+
+| Situation | Do this |
+|---|---|
+| A deployed folder is damaged or was deleted | `python -m training.promote --apply` reinstalls it from `models/candidates` (it compares file sizes and reinstalls when they differ) |
+| `models/candidates` is gone too | Unpack the archive: `.\scripts\package_models.ps1 -Install absa-models.zip` (the hash is checked first) |
+| No archive either | Retrain: `python -m training.run_all`, then `promote --apply`, then `evaluate`. Several hours on a CPU. The numbers can differ slightly from the committed report, which `evaluate` then rewrites |
+| You want the previous models back | Move the deployed folder away, then move the folder from `models/previous` into its place and rename it (drop the date suffix). Run `python -m training.evaluate` afterwards, or `pytest -m model` fails by design |
+
+Never mix folders from different runs without re-running
+`python -m training.evaluate`.
+
+## What can be removed, and what it frees
+
+Only after an archive exists outside this machine (shared drive, USB disk):
+
+| Remove | Frees | What is lost |
+|---|---|---|
+| `models/candidates/aspect_extraction`, `candidates/sentiment`, `candidates/overall_sentiment` | 1.22 GB | The local second copy. Keep `candidates/eval` and `candidates/logs` |
+| `models/previous/*` | 0.81 GB | The earlier models. Their test scores stay in `models/laptops_only_report.json`; the models themselves could not be recreated exactly (the sentiment one has no training record) |
+| `models/sentiment_joint_backup` | 0.41 GB | The first joint model and its evaluation report (`evaluation_report_joint.json`, not tracked in git: copy it out first if wanted) |
+| `models/train_sentiment_aspect.log` | 1 KB | Nothing of value |
+
+Total: about 2.44 GB. Without the three `candidates` model folders the only
+copies of the deployed models are the deployed folders and the archive.

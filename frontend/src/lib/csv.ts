@@ -83,21 +83,37 @@ export interface ParsedReviews {
   truncated: boolean;
 }
 
+/** One review per line; a line that is a single quoted CSV field is unwrapped. */
+function lineRows(input: string): Row[] {
+  const lines = input.replace(/^\uFEFF/, "").split(/\r\n|\n|\r/);
+  while (lines.length > 0 && lines[lines.length - 1].trim() === "") lines.pop();
+  return lines.map((raw, index) => {
+    const line = raw.trim();
+    if (line.length > 1 && line.startsWith('"') && line.endsWith('"')) {
+      const parsed = parseRows(line);
+      if (parsed.length === 1 && parsed[0].fields.length === 1) {
+        return { fields: parsed[0].fields, line: index + 1 };
+      }
+    }
+    return { fields: [line], line: index + 1 };
+  });
+}
+
 /**
  * Extracts the reviews from a CSV file or from pasted text.
  *
- * If the first row names a `review` or `text` column, that column is used and
- * the row is treated as a header. Otherwise every row's first column is a review.
+ * If the first row names a `review` or `text` column, the text is read as CSV
+ * and that column is used. Otherwise every line is one review, commas and all:
+ * people paste sentences, and "Great food, slow service." must not be cut at
+ * the comma.
  */
 export function parseReviews(text: string): ParsedReviews {
-  const rows = parseRows(text);
   const result: ParsedReviews = { reviews: [], skipped: [], truncated: false };
-  if (rows.length === 0) return result;
-
-  const header = rows[0].fields.map((name) => name.trim().toLowerCase());
+  const firstLine = text.replace(/^\uFEFF/, "").split(/\r\n|\n|\r/, 1)[0] ?? "";
+  const header = (parseRows(firstLine)[0]?.fields ?? []).map((name) => name.trim().toLowerCase());
   const named = header.findIndex((name) => REVIEW_COLUMNS.includes(name));
   const column = named >= 0 ? named : 0;
-  const body = named >= 0 ? rows.slice(1) : rows;
+  const body = named >= 0 ? parseRows(text).slice(1) : lineRows(text);
 
   for (const row of body) {
     const review = (row.fields[column] ?? "").trim();
@@ -115,8 +131,16 @@ export function parseReviews(text: string): ParsedReviews {
   return result;
 }
 
-function escapeField(value: string): string {
-  return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+/**
+ * Spreadsheets run a cell that starts with one of these characters as a
+ * formula. Review text is not ours, so such a cell gets a leading apostrophe,
+ * which makes Excel and LibreOffice treat it as text.
+ */
+const FORMULA_START = /^[=+\-@\t\r]/;
+
+function escapeField(value: string, untrusted = true): string {
+  const safe = untrusted && FORMULA_START.test(value) ? `'${value}` : value;
+  return /[",\r\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
 }
 
 /** One row per aspect (one row with empty aspect columns for a review without aspects). */
@@ -136,5 +160,9 @@ export function toCsv(items: AnalysisResponse[]): string {
       ]);
     }
   }
-  return rows.map((row) => row.map(escapeField).join(",")).join("\r\n") + "\r\n";
+  // Columns 0 and 2 hold review and aspect text; the others are our own labels and numbers.
+  return (
+    rows.map((row) => row.map((cell, column) => escapeField(cell, column === 0 || column === 2)).join(",")).join("\r\n") +
+    "\r\n"
+  );
 }
