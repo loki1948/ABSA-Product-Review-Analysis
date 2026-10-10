@@ -204,11 +204,15 @@ def render_error_analysis(per_domain: dict[str, dict[str, Any]], generated_at: s
     return "\n".join(lines)
 
 
+# Aspect extraction only. Both extraction models have a training log with the
+# same settings, so the only difference between them is the training domains.
+# The earlier laptops-only *sentiment* model is a checkpoint from an interrupted
+# run with no training record, so its scores (and end-to-end scores, which
+# depend on it) cannot be attributed to the training domains and are left out.
 TRANSFER_ROWS: list[tuple[str, tuple[str, ...]]] = [
+    ("Aspect extraction precision", ("aspect_extraction", "precision")),
+    ("Aspect extraction recall", ("aspect_extraction", "recall")),
     ("Aspect extraction F1", ("aspect_extraction", "f1")),
-    ("Aspect sentiment accuracy", ("aspect_sentiment", "accuracy")),
-    ("Aspect sentiment macro-F1", ("aspect_sentiment", "macro", "f1")),
-    ("End-to-end F1", ("end_to_end", "f1")),
 ]
 
 Sample = tuple[str, str, str, list[tuple[str, str, float]]]  # domain, review, overall, aspects
@@ -232,15 +236,20 @@ def render_transfer(
         "",
         f"- Generated: {generated_at}",
         "",
-        "## Measured: laptop-trained models on restaurant reviews",
+        "## Measured: a laptop-trained aspect extractor on restaurant reviews",
         "",
-        "The first models of this project were trained on laptop reviews only. Evaluating",
-        "them on the restaurant test set shows what happens on a product category the",
-        "models never saw. The second column is the deployed pair of models, trained on",
-        "both domains, on the same sentences.",
+        "The first aspect-extraction model of this project was trained on laptop reviews",
+        "only, with the same settings as the deployed one. Evaluating it on the restaurant",
+        "test set shows what happens on a product category the model never saw. The second",
+        "column is the deployed model, trained on both domains, on the same sentences.",
+        "",
+        "Sentiment and end-to-end scores are not compared here. The earlier laptops-only",
+        "sentiment model is a checkpoint from an interrupted training run and has no",
+        "training record, so a difference in its scores could not be attributed to the",
+        "training domains.",
         "",
     ]
-    for scope, title in (("restaurants", "Restaurant test set (unseen domain for the laptops-only models)"),
+    for scope, title in (("restaurants", "Restaurant test set (unseen domain for the laptops-only model)"),
                          ("laptops", "Laptop test set (seen by both)")):
         lines += [
             f"### {title}",
@@ -265,7 +274,10 @@ def render_transfer(
         "|---|---|---|---|",
     ]
     for domain, review, overall, aspects in samples:
-        found = ", ".join(f"{a} ({s}, {c:.0%})" for a, s, c in aspects) or "none"
+        # Only an exact 1 is shown as 100%, as in the web interface.
+        found = ", ".join(
+            f"{a} ({s}, {round(c * 100) if c >= 1 else min(round(c * 100), 99)}%)" for a, s, c in aspects
+        ) or "none"
         lines.append(f"| {domain} | {review.replace('|', '/')} | {overall} | {found} |")
     lines.append("")
     return "\n".join(lines)
@@ -284,7 +296,9 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
     from app.nlp.pipeline import ABSAPipeline
-    from training.common import load_split
+    from training.common import load_split, refuse_limited_default
+
+    refuse_limited_default(args.limit, args.output_dir, DOCS_DIR, "--output-dir")
 
     pipeline = ABSAPipeline.from_pretrained(ASPECT_MODEL_DIR, SENTIMENT_MODEL_DIR, OVERALL_MODEL_DIR)
     records = load_split("test", None, args.limit)

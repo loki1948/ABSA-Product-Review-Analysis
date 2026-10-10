@@ -68,7 +68,7 @@ def test_comparison_shows_each_verdict() -> None:
     )
     assert text.count("Verdict: **promote**") == 2
     assert "Verdict: **promote (nothing deployed)**" in text
-    assert "joint backup (reference)" in text
+    assert "not installed now (reference)" in text
     assert "macro-F1" in text and "span F1" in text
 
 
@@ -122,3 +122,64 @@ def test_promoting_twice_changes_nothing(tmp_path: Path) -> None:
 
     assert promote("sentiment", models, candidates, "20261009-130000") is None
     assert [p.name for p in (models / "previous").iterdir()] == ["sentiment-20261009-120000"]
+
+
+# --- findings from the independent review -----------------------------------
+
+
+def test_promote_archives_a_folder_that_is_not_just_the_placeholder(tmp_path: Path) -> None:
+    """A model unzipped one level too deep has no top-level config.json; it must not be deleted."""
+    models, candidates = tmp_path / "models", tmp_path / "models" / "candidates"
+    nested = models / "sentiment" / "sentiment"
+    nested.mkdir(parents=True)
+    (nested / "model.safetensors").write_bytes(b"weights")
+    make_model(candidates / "sentiment", "new")
+
+    archive = promote("sentiment", models, candidates, "20261010-100000")
+
+    assert archive is not None
+    assert (archive / "sentiment" / "model.safetensors").read_bytes() == b"weights"
+    assert (models / "sentiment" / "config.json").read_text(encoding="utf-8") == "new"
+
+
+def test_half_copied_model_is_not_reported_as_installed(tmp_path: Path) -> None:
+    """An interrupted copy can leave the training log without the weights."""
+    models, candidates = tmp_path / "models", tmp_path / "models" / "candidates"
+    make_model(candidates / "sentiment", "new")
+    (candidates / "sentiment" / "model.safetensors").write_bytes(b"weights")
+    (models / "sentiment").mkdir(parents=True)
+    (models / "sentiment" / "training_log.json").write_bytes(
+        (candidates / "sentiment" / "training_log.json").read_bytes()
+    )
+
+    promote("sentiment", models, candidates, "20261010-100000")
+
+    assert (models / "sentiment" / "model.safetensors").read_bytes() == b"weights"
+    assert not list(models.glob("*.incoming"))
+
+
+def test_deployed_models_are_read_from_the_current_report(tmp_path: Path) -> None:
+    from training.promote import deployed_models
+
+    models = tmp_path / "models"
+    for name in ("aspect_extraction", "sentiment", "overall_sentiment"):
+        make_model(models / name, name)
+    logs = {"aspect": {"run": "aspect_extraction"}, "sentiment": {"run": "sentiment"},
+            "overall": {"run": "some other model"}}
+    assert deployed_models({"training": logs}, models) == {"aspect_extraction", "sentiment"}
+    logs["overall"] = {"run": "overall_sentiment"}
+    assert deployed_models({"training": logs}, models) == {"aspect_extraction", "sentiment", "overall_sentiment"}
+    assert deployed_models(None, models) == set()
+
+
+def test_report_of_other_candidates_is_refused(tmp_path: Path) -> None:
+    from training.promote import report_matches_models
+
+    candidates = tmp_path / "candidates"
+    for name in ("aspect_extraction", "sentiment", "overall_sentiment"):
+        make_model(candidates / name, name)
+    fresh = {"training": {"aspect": {"run": "aspect_extraction"}, "sentiment": {"run": "sentiment"},
+                          "overall": {"run": "overall_sentiment"}}}
+    assert report_matches_models(fresh, candidates)
+    stale = {"training": {**fresh["training"], "sentiment": {"run": "an earlier candidate"}}}
+    assert not report_matches_models(stale, candidates)

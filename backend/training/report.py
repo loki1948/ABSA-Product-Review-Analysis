@@ -8,7 +8,8 @@ Run from the ``backend`` directory, after ``evaluate``, ``baseline`` and
 Writes ``docs/report.md`` and ``docs/slides.md`` (a Marp deck). The prose is
 fixed in this file; every number is
 read from ``models/evaluation_report.json``, ``models/baseline_report.json``,
-``models/laptops_only_report.json`` (the earlier models, evaluated by ``run_all``) and
+``models/laptops_only_report.json`` (the evaluation of the earlier laptops-only models
+that ``run_all`` wrote before they were replaced; a copy kept for the transfer study) and
 ``data/processed/dataset_stats.json``. Retrain, re-evaluate, rerun this script,
 and the report follows.
 """
@@ -26,6 +27,14 @@ from app.paths import DOCS_DIR, MODELS_DIR, PROCESSED_DATA_DIR
 logger = logging.getLogger("report")
 
 TITLE = "Aspect-Based Sentiment Analysis for Automated Product Review Analysis Using Natural Language Processing"
+
+# Shown in the System section when the files exist (frontend/scripts/browser-checks.mjs takes them).
+SCREENSHOTS = [
+    ("The analyzer: overall label, highlighted aspects and the aspect table", "analyzer-result.png"),
+    ("Batch analysis of a CSV file", "batch-results.png"),
+    ("Review history with one analysis opened", "history.png"),
+    ("Dashboard: aggregate charts and the models' test metrics", "dashboard.png"),
+]
 
 METRICS: list[tuple[str, tuple[str, ...]]] = [
     ("Aspect extraction precision", ("aspect_extraction", "precision")),
@@ -56,10 +65,11 @@ def _scope_title(scope: str) -> str:
 
 
 def _comparison(title: str, left_name: str, left: dict[str, Any] | None,
-                right: dict[str, Any], scope: str) -> list[str]:
+                right: dict[str, Any], scope: str,
+                metrics: list[tuple[str, tuple[str, ...]]] | None = None) -> list[str]:
     """Table: metric | left | deployed BERT | difference, for one scope."""
     lines = [f"**{title}**", "", f"| Metric | {left_name} | BERT (deployed) | Difference |", "|---|---|---|---|"]
-    for name, path in METRICS:
+    for name, path in metrics or METRICS:
         old = _get(left, "results", scope, *path)
         new = _get(right, "results", scope, *path)
         diff = "n/a" if old is None or new is None else f"{new - old:+.4f}"
@@ -99,8 +109,9 @@ def render_report(
         "Traditional sentiment analysis assigns one label to a whole review, although a review",
         "usually praises some features of a product and criticises others. This project builds",
         "a system that extracts the product aspects mentioned in a review and classifies the",
-        "sentiment towards each one. Two fine-tuned BERT models are used: a token classifier",
+        "sentiment towards each one. Two fine-tuned BERT models do this: a token classifier",
         "that tags aspect terms and a sentence-pair classifier that judges one aspect at a time.",
+        "A third model gives the traditional single label for comparison.",
         f"On the SemEval-2014 test sets ({', '.join(domains)}) the system reaches an aspect-extraction",
         f"F1 of {_num(f1)}, an aspect-sentiment accuracy of {_num(accuracy)} (macro-F1 {_num(macro)})",
         f"and an end-to-end F1 of {_num(end_to_end)}."
@@ -190,6 +201,8 @@ def render_report(
         "CSV files with export, the review history, and a dashboard with charts and the models'",
         "test metrics. Architecture: [architecture.md](architecture.md). Endpoints: [API.md](API.md).",
         "",
+        *[line for caption, name in SCREENSHOTS if (DOCS_DIR / "screenshots" / name).exists()
+          for line in (f"![{caption}](screenshots/{name})", "")],
         "## 5. Experimental setup",
         "",
         "| | Aspect extraction | Aspect sentiment | Overall sentiment |",
@@ -267,15 +280,17 @@ def render_report(
     lines += ["### 6.4 Transfer to an unseen domain", ""]
     if laptops_only:
         lines += [
-            "The first models of the project were trained on laptop reviews only. Their scores on the",
-            "restaurant test set measure transfer to a product category absent from training; the",
-            "deployed models were trained on both domains.",
+            "The first aspect-extraction model of the project was trained on laptop reviews only,",
+            "with the same settings as the deployed one. Its scores on the restaurant test set measure",
+            "transfer to a product category absent from training. Sentiment scores are not compared:",
+            "the earlier laptops-only sentiment model has no training record, so a difference could",
+            "not be attributed to the training domains.",
             "",
         ]
         for scope in ("restaurants", "laptops"):
             if scope in results:
                 lines += _comparison(f"{_scope_title(scope)} test set", "Trained on laptops only",
-                                     laptops_only, bert, scope)
+                                     laptops_only, bert, scope, METRICS[:3])
         lines += ["Details and examples from other product categories: [transfer.md](transfer.md).", ""]
     else:
         lines += ["Laptops-only report not available.", ""]
@@ -454,12 +469,12 @@ def render_slides(
         slides.append([
             "## Transfer to an unseen domain",
             "",
-            "Restaurant test set: models trained on laptops only against models trained on both domains.",
+            "Restaurant test set: an aspect extractor trained on laptops only against the one trained on both domains.",
             "",
             "| Metric | Trained on laptops only | Trained on both |",
             "|---|---|---|",
             *[f"| {name} | {_short(_get(laptops_only, 'results', 'restaurants', *path))} | "
-              f"{_short(_get(results['restaurants'], *path))} |" for name, path in key_metrics],
+              f"{_short(_get(results['restaurants'], *path))} |" for name, path in METRICS[:3]],
         ])
     slides += [
         [

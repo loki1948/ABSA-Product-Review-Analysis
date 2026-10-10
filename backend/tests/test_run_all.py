@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from training.run_all import (
     CANDIDATES_DIR,
     LOCK_NAME,
@@ -11,6 +13,22 @@ from training.run_all import (
     run,
     status,
 )
+
+
+@pytest.fixture(autouse=True)
+def installed_models(tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Three stand-in installed models, so the chain includes ``eval_current`` on any machine."""
+    import json
+
+    import training.run_all as run_all_module
+
+    root = tmp_path_factory.mktemp("installed")
+    for folder in ("aspect_extraction", "sentiment", "overall_sentiment"):
+        (root / folder).mkdir()
+        (root / folder / "config.json").write_text("{}", encoding="utf-8")
+        (root / folder / "training_log.json").write_text(json.dumps({"run": folder}), encoding="utf-8")
+    monkeypatch.setattr(run_all_module, "DEPLOYED_ROOT", root)
+    return root
 
 
 class Recorder:
@@ -99,7 +117,7 @@ def test_step_that_succeeds_without_its_output_is_a_failure(tmp_path: Path) -> N
 def test_second_run_is_refused_while_a_lock_exists(tmp_path: Path) -> None:
     log_dir = tmp_path / "logs"
     log_dir.mkdir()
-    (log_dir / LOCK_NAME).write_text("1234", encoding="utf-8")
+    (log_dir / LOCK_NAME).write_text("not a process id", encoding="utf-8")
     recorder = Recorder()
     assert run(build_steps(tmp_path), log_dir, recorder) == 2
     assert recorder.executed == []
@@ -134,3 +152,66 @@ def test_keep_awake_also_keeps_the_display_on() -> None:
 
     es_continuous, es_system_required, es_display_required = 0x80000000, 0x1, 0x2
     assert AWAKE_FLAGS == es_continuous | es_system_required | es_display_required
+
+
+# --- findings from the independent review -----------------------------------
+
+
+def _model(folder: Path, run: str) -> None:
+    import json
+
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / "config.json").write_text("{}", encoding="utf-8")
+    (folder / "training_log.json").write_text(json.dumps({"run": run}), encoding="utf-8")
+
+
+def test_evaluation_of_a_replaced_candidate_is_not_complete(tmp_path: Path) -> None:
+    import json
+
+    from training.run_all import is_done
+
+    for name in ("aspect_extraction", "sentiment", "overall_sentiment"):
+        _model(tmp_path / name, "first")
+    step = build_steps(tmp_path)[3]
+    step.done_marker.parent.mkdir(parents=True)
+    logs = {"aspect": {"run": "first"}, "sentiment": {"run": "first"}, "overall": {"run": "first"}}
+    step.done_marker.write_text(json.dumps({"training": logs}), encoding="utf-8")
+    assert is_done(step)
+
+    _model(tmp_path / "sentiment", "retrained")
+    assert not is_done(step), "the report describes the earlier sentiment candidate"
+
+
+def test_fresh_clone_has_no_current_models_to_evaluate(tmp_path: Path) -> None:
+    deployed = tmp_path / "deployed"
+    steps = build_steps(tmp_path / "candidates", deployed_root=deployed)
+    assert [s.name for s in steps] == ["aspect", "sentiment", "overall", "eval_candidate"]
+
+
+def test_current_evaluation_uses_the_deployed_overall_model_when_there_is_one(tmp_path: Path) -> None:
+    deployed = tmp_path / "deployed"
+    for name in ("aspect_extraction", "sentiment", "overall_sentiment"):
+        _model(deployed / name, name)
+    step = build_steps(tmp_path / "candidates", deployed_root=deployed)[4]
+    overall = step.args[step.args.index("--overall-model-dir") + 1]
+    assert Path(overall) == deployed / "overall_sentiment"
+
+
+def test_lock_of_a_dead_process_is_taken_over(tmp_path: Path) -> None:
+    log_dir = tmp_path / "logs"
+    log_dir.mkdir()
+    (log_dir / LOCK_NAME).write_text("999999999", encoding="utf-8")  # no such process
+    recorder = Recorder()
+    assert run(build_steps(tmp_path, deployed_root=tmp_path / "none"), log_dir, recorder) == 0
+    assert recorder.executed[0] == "aspect"
+
+
+def test_lock_of_a_live_process_is_respected(tmp_path: Path) -> None:
+    import os
+
+    log_dir = tmp_path / "logs"
+    log_dir.mkdir()
+    (log_dir / LOCK_NAME).write_text(str(os.getpid()), encoding="utf-8")
+    recorder = Recorder()
+    assert run(build_steps(tmp_path), log_dir, recorder) == 2
+    assert recorder.executed == []

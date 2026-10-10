@@ -36,7 +36,7 @@ from typing import Any
 from app.nlp.labels import SENTIMENT_LABELS
 from app.nlp.preprocessing import bio_to_spans, extract_context, tokenize
 from app.paths import DOCS_DIR, MODELS_DIR
-from training.common import load_split, sentence_level_label
+from training.common import load_split, refuse_limited_default, sentence_level_label
 from training.metrics import classification_metrics, span_prf
 
 logger = logging.getLogger("baseline")
@@ -264,6 +264,8 @@ def main() -> None:
     parser.add_argument("--markdown", type=Path, default=DOCS_DIR / "baseline.md")
     parser.add_argument("--bert-report", type=Path, default=MODELS_DIR / "evaluation_report.json")
     args = parser.parse_args()
+    refuse_limited_default(args.limit, args.report, MODELS_DIR / "baseline_report.json", "--report")
+    refuse_limited_default(args.limit, args.markdown, DOCS_DIR / "baseline.md", "--markdown")
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
     records = load_split("test", args.domains, args.limit)

@@ -55,7 +55,7 @@ def test_accuracy_is_reported_per_band_in_order() -> None:
 def scope(aspect_f1: float, sentiment_f1: float) -> dict:
     return {
         "test_sentences": 800,
-        "aspect_extraction": {"f1": aspect_f1},
+        "aspect_extraction": {"precision": aspect_f1, "recall": aspect_f1, "f1": aspect_f1},
         "aspect_sentiment": {"accuracy": sentiment_f1, "macro": {"f1": sentiment_f1}},
         "end_to_end": {"f1": aspect_f1 * sentiment_f1},
     }
@@ -75,3 +75,18 @@ def test_transfer_lists_the_hand_written_reviews_as_an_illustration() -> None:
     text = render_transfer(reports, reports, samples)
     assert "| phones | The camera is superb. | positive | camera (positive, 97%) |" in text
     assert "not a measurement" in text
+
+
+def test_transfer_does_not_compare_sentiment_models() -> None:
+    """The earlier sentiment model has no training record, so no claim is made about it."""
+    reports = {"results": {"laptops": scope(0.8, 0.7), "restaurants": scope(0.8, 0.7)}}
+    text = render_transfer(reports, reports, samples=[])
+    assert "| Aspect sentiment" not in text
+    assert "| End-to-end" not in text
+    assert "no" in text and "training record" in text
+
+
+def test_transfer_never_shows_full_certainty_for_a_probability_below_one() -> None:
+    reports = {"results": {"laptops": scope(0.8, 0.7), "restaurants": scope(0.8, 0.7)}}
+    samples = [("phones", "Fast.", "positive", [("speed", "positive", 0.9996)])]
+    assert "speed (positive, 99%)" in render_transfer(reports, reports, samples)

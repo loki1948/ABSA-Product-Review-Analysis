@@ -99,3 +99,13 @@ def test_report_describes_the_deployed_models() -> None:
         assert published["training"][key]["training_minutes"] == log["training_minutes"]
     assert published["domains"] == ["laptops", "restaurants"]
     assert "aspect_sentiment_by_sentence_type" in published["results"]["all"]
+
+
+def test_limit_cannot_overwrite_published_or_deployed_outputs(tmp_path: Path) -> None:
+    """`--limit` is for trying a script out; its toy output must not replace real files."""
+    from training.common import refuse_limited_default
+
+    with pytest.raises(SystemExit, match="--limit"):
+        refuse_limited_default(32, DOCS_DIR / "results.md", DOCS_DIR / "results.md", "--markdown")
+    refuse_limited_default(32, tmp_path / "results.md", DOCS_DIR / "results.md", "--markdown")
+    refuse_limited_default(None, DOCS_DIR / "results.md", DOCS_DIR / "results.md", "--markdown")

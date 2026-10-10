@@ -42,7 +42,7 @@ from app.paths import (
     OVERALL_MODEL_DIR,
     SENTIMENT_MODEL_DIR,
 )
-from training.common import configure_logging, load_split
+from training.common import configure_logging, load_split, refuse_limited_default
 from training.metrics import span_prf
 from training.train_aspect import evaluate_extraction
 from training.train_sentiment import aspect_examples, evaluate_sentiment, sentence_examples
@@ -343,6 +343,8 @@ def main() -> None:
     parser.add_argument("--report", type=Path, default=MODELS_DIR / "evaluation_report.json")
     parser.add_argument("--markdown", type=Path, default=DOCS_DIR / "results.md")
     args = parser.parse_args()
+    refuse_limited_default(args.limit, args.report, MODELS_DIR / "evaluation_report.json", "--report")
+    refuse_limited_default(args.limit, args.markdown, DOCS_DIR / "results.md", "--markdown")
     configure_logging()
 
     training = {

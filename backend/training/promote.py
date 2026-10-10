@@ -23,6 +23,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import shutil
 import sys
 from datetime import datetime
@@ -30,7 +31,7 @@ from pathlib import Path
 from typing import Any
 
 from app.paths import MODELS_DIR
-from training.run_all import CANDIDATES_DIR
+from training.run_all import CANDIDATES_DIR, MODEL_FOLDERS, read_log
 
 logger = logging.getLogger("promote")
 
@@ -105,7 +106,7 @@ def render_comparison(
         is_deployed = model in deployed
         current = decision_values(current_report, model)
         candidate = decision_values(candidate_report, model)
-        column = "deployed" if is_deployed else "joint backup (reference)"
+        column = "deployed" if is_deployed else "not installed now (reference)"
         lines += [
             f"## {title}",
             "",
@@ -124,6 +125,36 @@ def render_comparison(
     return "\n".join(lines)
 
 
+def report_matches_models(report: dict[str, Any], root: Path) -> bool:
+    """True when ``report`` was computed from the models now in ``root``."""
+    training = report.get("training", {})
+    return all(training.get(key) == read_log(root / folder) for key, folder in MODEL_FOLDERS.items())
+
+
+def deployed_models(current_report: dict[str, Any] | None, models_dir: Path) -> set[str]:
+    """Installed models that ``current_report`` actually describes.
+
+    Only these can be compared with a candidate. A slot that was evaluated with
+    a stand-in (or not at all) counts as "nothing deployed".
+    """
+    if current_report is None:
+        return set()
+    training = current_report.get("training", {})
+    return {
+        folder for key, folder in MODEL_FOLDERS.items()
+        if (models_dir / folder / "config.json").exists()
+        and training.get(key) == read_log(models_dir / folder)
+    }
+
+
+def _same_files(source: Path, target: Path) -> bool:
+    """Every file of ``source`` exists in ``target`` with the same size."""
+    return all(
+        (target / item.name).is_file() and (target / item.name).stat().st_size == item.stat().st_size
+        for item in source.iterdir() if item.is_file()
+    )
+
+
 def promote(name: str, models_dir: Path, candidates_dir: Path, stamp: str) -> Path | None:
     """Install ``candidates_dir/name`` as ``models_dir/name``.
 
@@ -136,19 +167,32 @@ def promote(name: str, models_dir: Path, candidates_dir: Path, stamp: str) -> Pa
         raise FileNotFoundError(f"{candidate_log} not found: the candidate did not finish training")
 
     target_log = target / "training_log.json"
-    if target_log.exists() and target_log.read_bytes() == candidate_log.read_bytes():
+    if (
+        target_log.exists()
+        and target_log.read_bytes() == candidate_log.read_bytes()
+        and _same_files(candidate, target)
+    ):
         logger.info("%s: this candidate is already installed", name)
         return None
 
+    # Copy next to the target first and rename at the end: an interrupted copy
+    # then leaves a stray "<name>.incoming" folder, never a half-installed model.
+    incoming = models_dir / f"{name}.incoming"
+    if incoming.exists():
+        shutil.rmtree(incoming)
+    shutil.copytree(candidate, incoming)
+    (incoming / ".gitkeep").touch()
+
     archive: Path | None = None
-    if (target / "config.json").exists():
-        archive = models_dir / "previous" / f"{name}-{stamp}"
-        archive.parent.mkdir(parents=True, exist_ok=True)
-        shutil.move(str(target), str(archive))
-    elif target.exists():
-        shutil.rmtree(target)  # holds only the .gitkeep placeholder
-    shutil.copytree(candidate, target)
-    (target / ".gitkeep").touch()
+    if target.exists():
+        if {item.name for item in target.iterdir()} <= {".gitkeep"}:
+            shutil.rmtree(target)  # only the placeholder: nothing to keep
+        else:
+            # A model, or anything else someone put here: keep it.
+            archive = models_dir / "previous" / f"{name}-{stamp}"
+            archive.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(target), str(archive))
+    os.replace(incoming, target)
     return archive
 
 
@@ -158,26 +202,31 @@ def main() -> int:
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
-    reports = {}
+    reports: dict[str, dict[str, Any] | None] = {}
     for which in ("current", "candidate"):
         path = CANDIDATES_DIR / "eval" / which / "evaluation_report.json"
-        if not path.exists():
-            logger.error("%s not found. Run: python -m training.run_all", path)
-            return 1
-        reports[which] = json.loads(path.read_text(encoding="utf-8"))
+        reports[which] = json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
+    candidate_report, current_report = reports["candidate"], reports["current"]
+    if candidate_report is None:
+        logger.error("No candidate evaluation found. Run: python -m training.run_all")
+        return 1
+    if not report_matches_models(candidate_report, CANDIDATES_DIR):
+        logger.error("The candidate evaluation describes other models than those in %s "
+                     "(one was retrained since). Run: python -m training.run_all", CANDIDATES_DIR)
+        return 1
 
-    deployed = {
-        name for name in MODELS
-        # eval_current used the joint backup in the overall slot, so that slot
-        # only counts as deployed if a candidate has since been installed there.
-        if (MODELS_DIR / name / "config.json").exists() and name != "overall_sentiment"
-    }
-    print(render_comparison(reports["current"], reports["candidate"], deployed))
+    # A model is compared only if the "current" evaluation really is of the
+    # model installed now; otherwise there is nothing valid to compare with.
+    deployed = deployed_models(current_report, MODELS_DIR)
+    if current_report is None:
+        print("No installed models were evaluated (fresh setup): nothing to compare with.\n")
+    else:
+        print(render_comparison(current_report, candidate_report, deployed))
 
     verdicts = {
         name: verdict(
-            decision_values(reports["current"], name) if name in deployed else None,
-            decision_values(reports["candidate"], name),
+            decision_values(current_report, name) if current_report and name in deployed else None,
+            decision_values(candidate_report, name),
         )
         for name in MODELS
     }

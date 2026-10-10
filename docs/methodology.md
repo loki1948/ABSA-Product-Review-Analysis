@@ -49,8 +49,9 @@ classification, which is the usual 3-class setting.
 **Which data the shipped models use.** All three deployed models are trained
 on both domains. The "Training setup" table in `results.md` lists, for each
 model, the domains it was trained on and every hyperparameter; the same
-information is served by `GET /api/model-info`. Earlier models trained on
-laptops only are kept for the transfer study in [transfer.md](transfer.md).
+information is served by `GET /api/model-info`. An earlier aspect-extraction
+model trained on laptops only is used for the transfer study in
+[transfer.md](transfer.md).
 
 ## 3. Preprocessing
 
@@ -129,15 +130,14 @@ are not used. For a multi-sentence review, the per-sentence class probabilities
 are averaged.
 
 **Why two sentiment models instead of one.** The first version of this project
-trained a single classifier on both kinds of input. Its accuracy on test
-aspects was 0.7743 overall, but only 0.5049 on aspects in *mixed* sentences
-(sentences whose aspects have different polarities; 103 aspects) against 0.8262
-in uniform ones (535 aspects). Training the model to also output the sentiment
-of the whole sentence encourages it to ignore which aspect it was asked about.
-The two tasks were therefore separated. (Those figures describe that first
-laptops-only model; they are kept here as the reason for the design and are not
-part of the generated results.) `results.md` reports the mixed/uniform
-breakdown for the deployed model, so this weakness stays visible.
+trained a single classifier on both kinds of input. A model that is also
+trained to output the sentiment of the whole sentence is rewarded for ignoring
+which aspect it was asked about, which is the opposite of what aspect-based
+analysis needs, so the two tasks were given separate models. This is a design
+choice: the project contains no controlled comparison showing that separate
+models score higher. `results.md` reports accuracy separately for *mixed*
+sentences (aspects with different polarities) and *uniform* ones for the
+deployed model, so that weakness stays visible.
 
 ### 4.4 Context identification
 

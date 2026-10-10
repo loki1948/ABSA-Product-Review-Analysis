@@ -22,6 +22,7 @@ from app.nlp.preprocessing import bio_to_spans
 from app.paths import ASPECT_MODEL_DIR
 from training.common import (
     add_training_args,
+    refuse_limited_default,
     configure_logging,
     fine_tune,
     load_split,
@@ -68,6 +69,7 @@ def main() -> None:
     add_training_args(parser, lr=3e-5, epochs=3)
     parser.add_argument("--output-dir", type=Path, default=ASPECT_MODEL_DIR)
     args = parser.parse_args()
+    refuse_limited_default(args.limit, args.output_dir, ASPECT_MODEL_DIR, "--output-dir")
     configure_logging()
     set_seed(args.seed)
 

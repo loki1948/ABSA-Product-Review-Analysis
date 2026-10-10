@@ -19,7 +19,9 @@ first unfinished step. A training step that was interrupted starts over.
 from __future__ import annotations
 
 import argparse
+import json
 import logging
+import os
 import subprocess
 import sys
 from collections.abc import Callable, Iterator
@@ -27,7 +29,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
-from app.paths import ASPECT_MODEL_DIR, BACKEND_DIR, MODELS_DIR, SENTIMENT_MODEL_DIR
+from app.paths import BACKEND_DIR, MODELS_DIR
 
 logger = logging.getLogger("run_all")
 
@@ -35,9 +37,12 @@ CANDIDATES_DIR: Path = MODELS_DIR / "candidates"
 SMOKE_DIR: Path = CANDIDATES_DIR / "_smoke"
 LOCK_NAME = "run_all.lock"
 EVAL_DOMAINS = ("laptops", "restaurants")
-# No overall-sentiment model was deployed before the two-domain retrain; the
-# earlier joint model fills that slot when the deployed models are evaluated.
-CURRENT_OVERALL_DIR: Path = MODELS_DIR / "sentiment_joint_backup"
+# Where the installed models live. A module variable so tests can point it elsewhere.
+DEPLOYED_ROOT: Path = MODELS_DIR
+# Before the two-domain retrain no overall-sentiment model was deployed; this
+# earlier joint model then fills that slot when the deployed models are evaluated.
+LEGACY_OVERALL = "sentiment_joint_backup"
+MODEL_FOLDERS = {"aspect": "aspect_extraction", "sentiment": "sentiment", "overall": "overall_sentiment"}
 
 
 @dataclass(frozen=True)
@@ -46,6 +51,27 @@ class Step:
     module: str
     args: tuple[str, ...]
     done_marker: Path
+    # For evaluation steps: report key -> folder of the model that was evaluated.
+    models: tuple[tuple[str, Path], ...] = ()
+
+
+def read_log(model_dir: Path) -> dict:
+    path = model_dir / "training_log.json"
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+
+
+def is_done(step: Step) -> bool:
+    """A step is complete when its last file exists and, for an evaluation,
+    that report still describes the models now in the evaluated folders."""
+    if not step.done_marker.exists():
+        return False
+    if not step.models:
+        return True
+    try:
+        training = json.loads(step.done_marker.read_text(encoding="utf-8")).get("training", {})
+    except (json.JSONDecodeError, AttributeError):
+        return False
+    return all(training.get(key) == read_log(folder) for key, folder in step.models)
 
 
 def _evaluation(name: str, out_dir: Path, aspect: Path, sentiment: Path, overall: Path) -> Step:
@@ -62,11 +88,18 @@ def _evaluation(name: str, out_dir: Path, aspect: Path, sentiment: Path, overall
             "--markdown", str(out_dir / "results.md"),
         ),
         report,
+        (("aspect", aspect), ("sentiment", sentiment), ("overall", overall)),
     )
 
 
-def build_steps(root: Path, smoke: bool = False) -> list[Step]:
-    """The chain, in execution order. ``smoke`` shrinks it to a quick check."""
+def build_steps(root: Path, smoke: bool = False, deployed_root: Path | None = None) -> list[Step]:
+    """The chain, in execution order. ``smoke`` shrinks it to a quick check.
+
+    The installed models are evaluated too (``eval_current``) so that
+    ``promote`` can compare. On a fresh clone nothing is installed and that
+    step is left out.
+    """
+    deployed_root = deployed_root or DEPLOYED_ROOT
     aspect, sentiment, overall = root / "aspect_extraction", root / "sentiment", root / "overall_sentiment"
     steps = [
         Step("aspect", "training.train_aspect",
@@ -76,16 +109,48 @@ def build_steps(root: Path, smoke: bool = False) -> list[Step]:
         Step("overall", "training.train_sentiment",
              ("--task", "overall", "--output-dir", str(overall)), overall / "training_log.json"),
         _evaluation("eval_candidate", root / "eval" / "candidate", aspect, sentiment, overall),
-        _evaluation("eval_current", root / "eval" / "current",
-                    ASPECT_MODEL_DIR, SENTIMENT_MODEL_DIR, CURRENT_OVERALL_DIR),
     ]
+    current = {key: deployed_root / folder for key, folder in MODEL_FOLDERS.items()}
+    if not (current["overall"] / "config.json").exists():
+        current["overall"] = deployed_root / LEGACY_OVERALL
+    if all((folder / "config.json").exists() for folder in current.values()):
+        steps.append(_evaluation("eval_current", root / "eval" / "current",
+                                 current["aspect"], current["sentiment"], current["overall"]))
     if not smoke:
         return steps
     small = []
     for step in steps[:4]:
         extra = ("--limit", "32") if step.name.startswith("eval") else ("--limit", "32", "--epochs", "1")
-        small.append(Step(step.name, step.module, step.args + extra, step.done_marker))
+        small.append(Step(step.name, step.module, step.args + extra, step.done_marker, step.models))
     return small
+
+
+def _process_alive(pid: int) -> bool:
+    if sys.platform == "win32":
+        import ctypes
+
+        handle = ctypes.windll.kernel32.OpenProcess(0x1000, False, pid)  # query limited information
+        if not handle:
+            return False
+        code = ctypes.c_ulong()
+        ctypes.windll.kernel32.GetExitCodeProcess(handle, ctypes.byref(code))
+        ctypes.windll.kernel32.CloseHandle(handle)
+        return code.value == 259  # STILL_ACTIVE
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def _lock_owner_alive(lock: Path) -> bool:
+    """False only when the lock names a process that no longer exists."""
+    try:
+        return _process_alive(int(lock.read_text(encoding="utf-8").strip()))
+    except (OSError, ValueError):
+        return True  # unreadable lock: assume a run is active rather than start a second one
 
 
 def execute_step(step: Step, log_path: Path) -> int:
@@ -103,17 +168,20 @@ def run(
     """Run the unfinished steps in order. Returns 0, or the first failure's exit code."""
     log_dir.mkdir(parents=True, exist_ok=True)
     lock = log_dir / LOCK_NAME
+    if lock.exists() and not _lock_owner_alive(lock):
+        logger.warning("Removing the lock of a run that is no longer alive: %s", lock)
+        lock.unlink()
     try:
         # "x" fails if the file exists: two trainings must never share the CPU.
         with lock.open("x", encoding="utf-8") as handle:
-            handle.write("run_all is active\n")
+            handle.write(str(os.getpid()))
     except FileExistsError:
-        logger.error("Another run is active (or was killed): %s. "
-                     "If no training is running, delete that file and start again.", lock)
+        logger.error("Another run is active: %s. Before deleting that file by hand, make sure no "
+                     "`python -m training...` process is still running (Task Manager).", lock)
         return 2
     try:
         for step in steps:
-            if step.done_marker.exists():
+            if is_done(step):
                 logger.info("%s: already complete, skipped", step.name)
                 continue
             logger.info("%s: started (log: %s)", step.name, log_dir / f"{step.name}.log")
@@ -135,7 +203,7 @@ def status(steps: list[Step], log_dir: Path) -> list[tuple[str, str]]:
     active = (log_dir / LOCK_NAME).exists()
     result: list[tuple[str, str]] = []
     for step in steps:
-        if step.done_marker.exists():
+        if is_done(step):
             result.append((step.name, "done"))
         elif active:
             result.append((step.name, "running"))

@@ -66,6 +66,15 @@ def sentence_level_label(polarities: list[str]) -> str | None:
     return "positive" if balance > 0 else "negative" if balance < 0 else "neutral"
 
 
+def refuse_limited_default(limit: int | None, path: Path, default: Path, flag: str) -> None:
+    """Stop a ``--limit`` trial run from replacing a real model or published file."""
+    if limit and path.resolve() == default.resolve():
+        raise SystemExit(
+            f"--limit is for trying the script out, and {path} is where the real output lives. "
+            f"Pass {flag} with another location (or use `python -m training.run_all --smoke`)."
+        )
+
+
 def add_training_args(parser: argparse.ArgumentParser, lr: float, epochs: int) -> None:
     parser.add_argument("--model-name", default=DEFAULT_MODEL_NAME, help="pretrained checkpoint")
     parser.add_argument("--domains", nargs="+", default=list(DOMAINS), choices=DOMAINS)

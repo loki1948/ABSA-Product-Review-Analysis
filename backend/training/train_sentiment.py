@@ -33,6 +33,7 @@ from app.nlp.labels import SENTIMENT_ID2LABEL, SENTIMENT_LABEL2ID, SENTIMENT_LAB
 from app.paths import OVERALL_MODEL_DIR, SENTIMENT_MODEL_DIR
 from training.common import (
     add_training_args,
+    refuse_limited_default,
     configure_logging,
     fine_tune,
     load_split,
@@ -79,8 +80,10 @@ def main() -> None:
     parser.add_argument("--output-dir", type=Path, default=None,
                         help="default: models/sentiment (aspect) or models/overall_sentiment (overall)")
     args = parser.parse_args()
+    default_dir = SENTIMENT_MODEL_DIR if args.task == "aspect" else OVERALL_MODEL_DIR
     if args.output_dir is None:
-        args.output_dir = SENTIMENT_MODEL_DIR if args.task == "aspect" else OVERALL_MODEL_DIR
+        args.output_dir = default_dir
+    refuse_limited_default(args.limit, args.output_dir, default_dir, "--output-dir")
     configure_logging()
     set_seed(args.seed)
 
