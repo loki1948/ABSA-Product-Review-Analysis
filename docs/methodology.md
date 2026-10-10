@@ -46,9 +46,11 @@ Polarity `conflict` (an aspect that is both praised and criticised; 126 of the
 5453 training terms) is kept for aspect extraction but excluded from sentiment
 classification, which is the usual 3-class setting.
 
-**Which data the shipped models use.** The training scripts accept
-`--domains`. The "Training setup" table in `results.md` lists, for each model,
-the domains it was trained on and every hyperparameter.
+**Which data the shipped models use.** All three deployed models are trained
+on both domains. The "Training setup" table in `results.md` lists, for each
+model, the domains it was trained on and every hyperparameter; the same
+information is served by `GET /api/model-info`. Earlier models trained on
+laptops only are kept for the transfer study in [transfer.md](transfer.md).
 
 ## 3. Preprocessing
 
@@ -132,8 +134,10 @@ aspects was 0.7743 overall, but only 0.5049 on aspects in *mixed* sentences
 (sentences whose aspects have different polarities; 103 aspects) against 0.8262
 in uniform ones (535 aspects). Training the model to also output the sentiment
 of the whole sentence encourages it to ignore which aspect it was asked about.
-The two tasks were therefore separated. `results.md` reports the mixed/uniform
-breakdown for the current model, so this weakness stays visible.
+The two tasks were therefore separated. (Those figures describe that first
+laptops-only model; they are kept here as the reason for the design and are not
+part of the generated results.) `results.md` reports the mixed/uniform
+breakdown for the deployed model, so this weakness stays visible.
 
 ### 4.4 Context identification
 
@@ -171,6 +175,8 @@ loss and validation score of every epoch, and the training time.
 | Aspect sentiment | Accuracy; macro and per-class precision, recall, F1; confusion matrix | Gold aspects are given, so this measures the classifier alone. |
 | Aspect sentiment by sentence type | Accuracy, macro-F1 | Separately for aspects in *uniform* sentences (all aspects share a polarity) and *mixed* sentences (they differ). Only the mixed subset shows whether predictions are truly aspect-specific. |
 | Overall sentiment | Same as aspect sentiment | Against the weak sentence labels of section 4.3. |
+| Baseline | All of the above | A rule-and-lexicon system scored by the same functions, see [baseline.md](baseline.md). |
+| Error analysis | Error types, confusions, accuracy by confidence | See [error_analysis.md](error_analysis.md). |
 | End-to-end ABSA | Precision, recall, F1 | Raw sentence in; a predicted (aspect, sentiment) pair is correct only if span and sentiment are both right. |
 
 Macro-F1 is reported next to accuracy because the classes are imbalanced
@@ -190,6 +196,9 @@ on the neutral class.
 - Sentences that mix sentiments are the hardest case and are rare in the
   training data; see the mixed-sentence row in `results.md`.
 - Results come from one training run with one seed; no confidence intervals.
+- The deployed models were chosen over the previous ones by comparing test-set
+  scores on both domains (`training/promote.py`), a mild use of the test set
+  for selection.
 - "Confidence" is the softmax probability of the predicted class. It is not
   calibrated and should be read as a relative score.
 

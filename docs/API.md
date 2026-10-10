@@ -199,20 +199,32 @@ The contents of `models/evaluation_report.json`, written by
   "report": {
     "generated_at": "...",
     "dataset": "SemEval-2014 Task 4, gold test set",
-    "domains": ["laptops"],
-    "training": { "aspect": { "...": "..." }, "sentiment": { "...": "..." } },
+    "domains": ["laptops", "restaurants"],
+    "training": {
+      "aspect": { "...": "..." },
+      "sentiment": { "...": "..." },
+      "overall": { "...": "..." }
+    },
     "results": {
       "all": {
-        "test_sentences": 800,
+        "test_sentences": 1600,
         "aspect_extraction": { "...": "..." },
         "aspect_sentiment": { "...": "..." },
+        "aspect_sentiment_by_sentence_type": { "uniform": { "...": "..." }, "mixed": { "...": "..." } },
         "overall_sentiment": { "...": "..." },
         "end_to_end": { "...": "..." }
-      }
+      },
+      "laptops": { "...": "..." },
+      "restaurants": { "...": "..." }
     }
   }
 }
 ```
+
+`training` holds each deployed model's `training_log.json` (hyperparameters,
+validation score per epoch, training time), so the response identifies exactly
+which models the numbers belong to. `results` has one entry for all test data
+and one per domain.
 
 The same numbers, as tables, are in [results.md](results.md). `report` is
 typed loosely on purpose: the evaluation script owns its layout.
