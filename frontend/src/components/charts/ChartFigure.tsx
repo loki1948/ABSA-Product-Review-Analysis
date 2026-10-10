@@ -12,7 +12,7 @@ interface Props {
 /** A titled card around one Recharts chart. */
 export default function ChartFigure({ title, description, height = 260, children }: Props) {
   return (
-    <figure aria-label={description} className="rounded-lg border border-slate-200 bg-white p-4">
+    <figure aria-label={description} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
       <figcaption className="mb-3 text-sm font-semibold text-slate-700">{title}</figcaption>
       <div style={{ height }} aria-hidden="true">
         <ResponsiveContainer width="100%" height="100%">

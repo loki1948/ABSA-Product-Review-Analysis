@@ -40,7 +40,7 @@ export default function App() {
                 to={link.to}
                 end={link.to === "/"}
                 className={({ isActive }) =>
-                  isActive ? "font-medium text-blue-700" : "text-slate-600 hover:text-slate-900"
+                  isActive ? "py-1 font-medium text-blue-700" : "py-1 text-slate-600 hover:text-slate-900"
                 }
               >
                 {link.label}

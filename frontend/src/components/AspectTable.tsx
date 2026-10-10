@@ -5,7 +5,7 @@ import SentimentBadge from "./SentimentBadge";
 /** One row per extracted aspect. */
 export default function AspectTable({ aspects }: { aspects: AspectResult[] }) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+    <div className="relative overflow-x-auto rounded-lg border border-slate-200 bg-white">
       <table className="w-full text-left text-sm">
         <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-600">
           <tr>

@@ -32,7 +32,7 @@ export default function AnalysisResult({ result }: { result: AnalysisResponse })
   const hasAspects = result.aspects.length > 0;
   return (
     <div className="grid gap-4 lg:grid-cols-3">
-      <div className="lg:col-span-1">
+      <div className="min-w-0 lg:col-span-1">
         <SentimentCard
           sentiment={result.overall_sentiment}
           confidence={result.overall_confidence}
@@ -40,7 +40,7 @@ export default function AnalysisResult({ result }: { result: AnalysisResponse })
       </div>
       <section
         aria-label="Aspect-based view"
-        className="space-y-4 rounded-lg border border-slate-200 bg-white p-4 lg:col-span-2"
+        className="min-w-0 space-y-4 rounded-lg border border-slate-200 bg-white p-4 lg:col-span-2"
       >
         <div>
           <h2 className="text-sm font-semibold text-slate-700">Aspect-based view</h2>

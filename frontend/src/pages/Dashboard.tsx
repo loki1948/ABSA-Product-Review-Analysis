@@ -79,7 +79,7 @@ export default function Dashboard() {
                 {stats.top_aspects.length > 0 ? (
                   <>
                     <AspectFrequency aspects={stats.top_aspects} />
-                    <div className="lg:col-span-2">
+                    <div className="min-w-0 lg:col-span-2">
                       <AspectSentimentBars aspects={stats.top_aspects} />
                     </div>
                   </>

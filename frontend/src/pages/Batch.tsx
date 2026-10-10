@@ -197,7 +197,7 @@ export default function Batch() {
               Download results (CSV)
             </button>
           </div>
-          <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+          <div className="relative overflow-x-auto rounded-lg border border-slate-200 bg-white">
             <table className="w-full text-left text-sm">
               <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-600">
                 <tr>

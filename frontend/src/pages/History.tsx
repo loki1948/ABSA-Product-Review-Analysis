@@ -107,7 +107,7 @@ export default function History() {
 
       {!error && data && data.items.length > 0 && (
         <>
-          <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white" aria-busy={loading}>
+          <div className="relative overflow-x-auto rounded-lg border border-slate-200 bg-white" aria-busy={loading}>
             <table className="w-full text-left text-sm">
               <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-600">
                 <tr>
@@ -140,7 +140,7 @@ export default function History() {
                           aria-label={`View analysis of review ${item.id}`}
                           aria-expanded={openId === item.id}
                           onClick={() => setOpenId(openId === item.id ? null : item.id)}
-                          className="mr-3 text-blue-700 hover:underline"
+                          className="mr-3 py-1 text-blue-700 hover:underline"
                         >
                           {openId === item.id ? "Hide" : "View"}
                         </button>
@@ -148,7 +148,7 @@ export default function History() {
                           type="button"
                           aria-label={`Delete review ${item.id}`}
                           onClick={() => setToDelete(item)}
-                          className="text-red-700 hover:underline"
+                          className="py-1 text-red-700 hover:underline"
                         >
                           Delete
                         </button>
