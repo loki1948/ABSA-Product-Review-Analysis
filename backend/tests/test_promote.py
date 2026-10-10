@@ -183,3 +183,83 @@ def test_report_of_other_candidates_is_refused(tmp_path: Path) -> None:
     assert report_matches_models(fresh, candidates)
     stale = {"training": {**fresh["training"], "sentiment": {"run": "an earlier candidate"}}}
     assert not report_matches_models(stale, candidates)
+
+
+# --- findings from the second review ----------------------------------------
+
+
+def _reports(tmp_path: Path, installed: dict[str, str], current_describes: dict[str, str] | None):
+    """Folders plus the two reports; values are the 'run' marker of each model's log."""
+    import json
+
+    models, candidates = tmp_path / "models", tmp_path / "models" / "candidates"
+    keys = {"aspect_extraction": "aspect", "sentiment": "sentiment", "overall_sentiment": "overall"}
+    for name in keys:
+        make_model(candidates / name, f"candidate-{name}")
+        if name in installed:
+            make_model(models / name, installed[name])
+    candidate = report(0.8, 0.8, 0.8)
+    candidate["training"] = {key: json.loads((candidates / name / "training_log.json").read_text())
+                             for name, key in keys.items()}
+    current = None
+    if current_describes is not None:
+        current = report(0.7, 0.7, 0.7)
+        current["training"] = {keys[name]: {"run": run} for name, run in current_describes.items()}
+    return models, candidates, candidate, current
+
+
+def test_installed_model_that_was_never_evaluated_is_not_replaced_unseen(tmp_path: Path) -> None:
+    """run_all stopped before evaluating the installed models: no comparison, so no automatic install."""
+    from training.promote import decide
+
+    models, candidates, candidate, _ = _reports(tmp_path, {"sentiment": "good-old-model"}, None)
+    assert decide("sentiment", candidate, None, models, candidates).startswith("needs decision")
+    assert decide("aspect_extraction", candidate, None, models, candidates) == "promote (nothing deployed)"
+
+
+def test_stale_current_report_does_not_count_as_a_comparison(tmp_path: Path) -> None:
+    from training.promote import decide
+
+    models, candidates, candidate, current = _reports(
+        tmp_path, {"sentiment": "restored-by-hand"}, {"sentiment": "some-earlier-model"})
+    assert decide("sentiment", candidate, current, models, candidates).startswith("needs decision")
+
+
+def test_evaluated_installed_model_is_compared(tmp_path: Path) -> None:
+    from training.promote import decide
+
+    models, candidates, candidate, current = _reports(tmp_path, {"sentiment": "old"}, {"sentiment": "old"})
+    assert decide("sentiment", candidate, current, models, candidates) == "promote"
+
+
+def test_candidate_that_is_already_installed_says_so_and_can_be_repaired(tmp_path: Path) -> None:
+    from training.promote import decide
+
+    models, candidates, candidate, current = _reports(tmp_path, {}, {"sentiment": "old"})
+    (candidates / "sentiment" / "model.safetensors").write_bytes(b"weights")
+    promote("sentiment", models, candidates, "20261010-100000")
+    assert decide("sentiment", candidate, current, models, candidates) == "already installed"
+
+    (models / "sentiment" / "model.safetensors").write_bytes(b"cut")  # damaged copy
+    promote("sentiment", models, candidates, "20261010-110000")
+    assert (models / "sentiment" / "model.safetensors").read_bytes() == b"weights"
+
+
+def test_model_in_use_is_left_intact(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The backend holds the weights open: the installed model must stay complete."""
+    import os
+
+    models, candidates = tmp_path / "models", tmp_path / "models" / "candidates"
+    make_model(models / "sentiment", "old")
+    make_model(candidates / "sentiment", "new")
+
+    def locked(source, target):
+        raise PermissionError("file in use")
+
+    monkeypatch.setattr(os, "rename", locked)
+    with pytest.raises(RuntimeError, match="in use"):
+        promote("sentiment", models, candidates, "20261010-100000")
+    assert (models / "sentiment" / "config.json").read_text(encoding="utf-8") == "old"
+    assert (models / "sentiment" / "training_log.json").exists()
+    assert not (models / "sentiment.incoming").exists()
+    assert not (models / "previous").exists()

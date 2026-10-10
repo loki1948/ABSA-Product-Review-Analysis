@@ -4,28 +4,28 @@ import { parseCsvRows, parseReviews, toCsv } from "./csv";
 
 describe("pasted reviews without a header", () => {
   it("keeps the whole line when a review contains commas", () => {
-    expect(parseReviews("Great food, slow service.\nNice screen, bad battery, okay price").reviews).toEqual([
+    expect(parseReviews("Great food, slow service.\nNice screen, bad battery, okay price", "paste").reviews).toEqual([
       "Great food, slow service.",
       "Nice screen, bad battery, okay price",
     ]);
   });
 
   it("does not let a stray quote swallow the following lines", () => {
-    expect(parseReviews('"Amazing" they said\nIt was fine').reviews).toEqual([
+    expect(parseReviews('"Amazing" they said\nIt was fine', "paste").reviews).toEqual([
       '"Amazing" they said',
       "It was fine",
     ]);
   });
 
   it("unwraps a line that is one quoted CSV field", () => {
-    expect(parseReviews('"Great food, slow service."\n"She said ""wow"""').reviews).toEqual([
+    expect(parseReviews('"Great food, slow service."\n"She said ""wow"""', "paste").reviews).toEqual([
       "Great food, slow service.",
       'She said "wow"',
     ]);
   });
 
-  it("still reads the named column when the first line is a header", () => {
-    expect(parseReviews('id,review\n1,"Great food, slow service."').reviews).toEqual([
+  it("reads the named column of an uploaded file", () => {
+    expect(parseReviews('id,review\n1,"Great food, slow service."', "file").reviews).toEqual([
       "Great food, slow service.",
     ]);
   });

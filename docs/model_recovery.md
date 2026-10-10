@@ -45,10 +45,10 @@ for the weights, config, tokenizer and training log of all three models.
 
 | Situation | Do this |
 |---|---|
-| A deployed folder is damaged or was deleted | `python -m training.promote --apply` reinstalls it from `models/candidates` (it compares file sizes and reinstalls when they differ) |
-| `models/candidates` is gone too | Unpack the archive: `.\scripts\package_models.ps1 -Install absa-models.zip` (the hash is checked first) |
+| A deployed folder is incomplete or was deleted | Stop the backend, then `python -m training.promote --apply`: a model reported as "already installed" is copied again from `models/candidates` when a file is missing or has a different size. A file damaged without a change in size is not noticed: compare hashes as shown above |
+| `models/candidates` is gone too | Move the three deployed folders away, then unpack the archive: `.\scripts\package_models.ps1 -Install absa-models.zip` (the hash is checked first; it refuses to unpack over a folder that is not empty) |
 | No archive either | Retrain: `python -m training.run_all`, then `promote --apply`, then `evaluate`. Several hours on a CPU. The numbers can differ slightly from the committed report, which `evaluate` then rewrites |
-| You want the previous models back | Move the deployed folder away, then move the folder from `models/previous` into its place and rename it (drop the date suffix). Run `python -m training.evaluate` afterwards, or `pytest -m model` fails by design |
+| You want the previous models back | Move the deployed folder away, then move the folder from `models/previous` into its place and rename it (drop the date suffix). Run `python -m training.evaluate` afterwards, or `pytest -m model` fails by design. `promote` will then answer "needs decision" for that model until `python -m training.run_all` has evaluated it |
 
 Never mix folders from different runs without re-running
 `python -m training.evaluate`.

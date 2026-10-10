@@ -91,3 +91,34 @@ def test_pptx_has_one_slide_per_section(tmp_path: Path) -> None:
     assert len(presentation.slides) == 2
     assert presentation.slides[1].shapes.title.text == "Two"
     assert any(shape.has_table for shape in presentation.slides[1].shapes)
+
+
+def test_appendix_does_not_repeat_its_own_title(tmp_path: Path) -> None:
+    import docx
+
+    target = tmp_path / "report.docx"
+    write_docx([("", "# Report\n\ntext\n", tmp_path), ("Appendix A: Results", "# Evaluation results\n\nbody\n", tmp_path)], target)
+    headings = [p.text for p in docx.Document(str(target)).paragraphs if p.style.name.startswith(("Heading", "Title"))]
+    assert headings == ["Report", "Appendix A: Results"]
+
+
+def test_table_rows_are_not_split_across_pages(tmp_path: Path) -> None:
+    import docx
+
+    target = tmp_path / "report.docx"
+    write_docx([("", MARKDOWN, tmp_path)], target)
+    table = docx.Document(str(target)).tables[0]
+    assert all(row._tr.xpath(".//w:cantSplit") for row in table.rows)
+
+
+def test_screenshots_follow_the_system_slide(tmp_path: Path) -> None:
+    from PIL import Image
+    from pptx import Presentation
+
+    picture = tmp_path / "shot.png"
+    Image.new("RGB", (400, 300), "white").save(picture)
+    deck = "---\nmarp: true\n---\n# Title\n\n---\n\n## System\n\n- a\n\n---\n\n## Results\n\n- b\n"
+    target = tmp_path / "deck.pptx"
+    write_pptx(deck, target, tmp_path, pictures=[("Application: analyzer", picture)])
+    titles = [slide.shapes.title.text for slide in Presentation(str(target)).slides]
+    assert titles == ["Title", "System", "Application: analyzer", "Results"]

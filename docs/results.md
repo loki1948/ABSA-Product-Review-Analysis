@@ -20,7 +20,7 @@
 | Seed | 42 | 42 | 42 |
 | Best epoch (validation) | 3 | 3 | 4 |
 | Model-selection metric | f1 | macro_f1 | macro_f1 |
-| Best validation score | 0.8312342569269521 | 0.7573510880202651 | 0.7362959598253717 |
+| Best validation score | 0.8312 | 0.7574 | 0.7363 |
 | Training time (minutes) | 78.62 | 94.96 | 37.33 |
 | Device | cpu | cpu | cpu |
 | Training examples | 5449 sentences | 5327 (sentence, aspect) pairs | 3088 sentences |

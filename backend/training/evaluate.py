@@ -222,6 +222,8 @@ def render_markdown(report: dict[str, Any]) -> str:
         value: Any = log
         for key in keys:
             value = value.get(key, "n/a") if isinstance(value, dict) else "n/a"
+        if isinstance(value, float) and keys[-1] == "best_validation_score":
+            return f"{value:.4f}"
         return ", ".join(map(str, value)) if isinstance(value, list) else str(value)
 
     for label, keys in [
@@ -345,6 +347,8 @@ def main() -> None:
     args = parser.parse_args()
     refuse_limited_default(args.limit, args.report, MODELS_DIR / "evaluation_report.json", "--report")
     refuse_limited_default(args.limit, args.markdown, DOCS_DIR / "results.md", "--markdown")
+    # The figures are written next to the markdown file, whatever it is called.
+    refuse_limited_default(args.limit, args.markdown.parent, DOCS_DIR, "--markdown")
     configure_logging()
 
     training = {

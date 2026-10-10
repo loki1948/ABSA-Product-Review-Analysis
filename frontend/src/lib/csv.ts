@@ -89,31 +89,43 @@ function lineRows(input: string): Row[] {
   while (lines.length > 0 && lines[lines.length - 1].trim() === "") lines.pop();
   return lines.map((raw, index) => {
     const line = raw.trim();
+    // Exactly one quoted field: no quote inside except doubled ones. A sentence
+    // such as "Wow" and "amazing" keeps its quotes.
     if (line.length > 1 && line.startsWith('"') && line.endsWith('"')) {
-      const parsed = parseRows(line);
-      if (parsed.length === 1 && parsed[0].fields.length === 1) {
-        return { fields: parsed[0].fields, line: index + 1 };
+      const inner = line.slice(1, -1);
+      if (!inner.replace(/""/g, "").includes('"')) {
+        return { fields: [inner.replace(/""/g, '"')], line: index + 1 };
       }
     }
     return { fields: [line], line: index + 1 };
   });
 }
 
+/** Where the text came from decides how it is read. */
+export type ReviewSource = "file" | "paste";
+
 /**
- * Extracts the reviews from a CSV file or from pasted text.
+ * Extracts the reviews from an uploaded CSV file or from typed text.
  *
- * If the first row names a `review` or `text` column, the text is read as CSV
- * and that column is used. Otherwise every line is one review, commas and all:
- * people paste sentences, and "Great food, slow service." must not be cut at
- * the comma.
+ * - `file`: read as CSV. The column named `review` or `text` is used; without
+ *   such a header, the first column of every row.
+ * - `paste`: every line is one review, commas and all. People type sentences,
+ *   and "Great food, slow service." must not be cut at the comma, nor a first
+ *   line that happens to start with "Text" be taken for a header.
  */
-export function parseReviews(text: string): ParsedReviews {
+export function parseReviews(text: string, source: ReviewSource = "file"): ParsedReviews {
   const result: ParsedReviews = { reviews: [], skipped: [], truncated: false };
-  const firstLine = text.replace(/^\uFEFF/, "").split(/\r\n|\n|\r/, 1)[0] ?? "";
-  const header = (parseRows(firstLine)[0]?.fields ?? []).map((name) => name.trim().toLowerCase());
-  const named = header.findIndex((name) => REVIEW_COLUMNS.includes(name));
-  const column = named >= 0 ? named : 0;
-  const body = named >= 0 ? parseRows(text).slice(1) : lineRows(text);
+  let column = 0;
+  let body: Row[];
+  if (source === "paste") {
+    body = lineRows(text);
+  } else {
+    const rows = parseRows(text);
+    const header = (rows[0]?.fields ?? []).map((name) => name.trim().toLowerCase());
+    const named = header.findIndex((name) => REVIEW_COLUMNS.includes(name));
+    column = named >= 0 ? named : 0;
+    body = named >= 0 ? rows.slice(1) : rows;
+  }
 
   for (const row of body) {
     const review = (row.fields[column] ?? "").trim();
@@ -133,8 +145,9 @@ export function parseReviews(text: string): ParsedReviews {
 
 /**
  * Spreadsheets run a cell that starts with one of these characters as a
- * formula. Review text is not ours, so such a cell gets a leading apostrophe,
- * which makes Excel and LibreOffice treat it as text.
+ * formula. Review text is not ours, so such a cell gets a leading apostrophe:
+ * the cell is then plain text and nothing is executed. The apostrophe stays
+ * visible in the opened file; that is the price of the protection.
  */
 const FORMULA_START = /^[=+\-@\t\r]/;
 

@@ -85,6 +85,12 @@ def accuracy_by_band(predictions: list[tuple[float, bool]]) -> list[tuple[str, i
     return rows
 
 
+def _confidence(value: float) -> str:
+    """Whole percent; only an exact 1 is shown as 100%, as in the web interface."""
+    rounded = round(value * 100)
+    return f"{rounded if value >= 1 else min(rounded, 99)}%"
+
+
 def _share(part: int, whole: int) -> str:
     return f"{part / whole:.1%}" if whole else "n/a"
 
@@ -199,7 +205,7 @@ def render_error_analysis(per_domain: dict[str, dict[str, Any]], generated_at: s
             "|---|---|---|---|---|",
         ]
         for text, aspect, gold, predicted, confidence in sentiment["sample"]:
-            lines.append(f"| {text.replace('|', '/')} | {aspect} | {gold} | {predicted} | {confidence:.0%} |")
+            lines.append(f"| {text.replace('|', '/')} | {aspect} | {gold} | {predicted} | {_confidence(confidence)} |")
         lines.append("")
     return "\n".join(lines)
 
@@ -274,10 +280,7 @@ def render_transfer(
         "|---|---|---|---|",
     ]
     for domain, review, overall, aspects in samples:
-        # Only an exact 1 is shown as 100%, as in the web interface.
-        found = ", ".join(
-            f"{a} ({s}, {round(c * 100) if c >= 1 else min(round(c * 100), 99)}%)" for a, s, c in aspects
-        ) or "none"
+        found = ", ".join(f"{a} ({s}, {_confidence(c)})" for a, s, c in aspects) or "none"
         lines.append(f"| {domain} | {review.replace('|', '/')} | {overall} | {found} |")
     lines.append("")
     return "\n".join(lines)

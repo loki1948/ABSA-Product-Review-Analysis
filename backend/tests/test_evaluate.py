@@ -109,3 +109,20 @@ def test_limit_cannot_overwrite_published_or_deployed_outputs(tmp_path: Path) ->
         refuse_limited_default(32, DOCS_DIR / "results.md", DOCS_DIR / "results.md", "--markdown")
     refuse_limited_default(32, tmp_path / "results.md", DOCS_DIR / "results.md", "--markdown")
     refuse_limited_default(None, DOCS_DIR / "results.md", DOCS_DIR / "results.md", "--markdown")
+
+
+def test_validation_score_is_rounded_in_the_training_table(report: dict[str, Any]) -> None:
+    for log in report["training"].values():
+        log["best_validation_score"] = 0.8312342569269521
+    text = render_markdown(report)
+    assert "| Best validation score | 0.8312 | 0.8312 | 0.8312 |" in text
+    assert "0.8312342569269521" not in text
+
+
+def test_limit_cannot_overwrite_the_published_figures(tmp_path: Path) -> None:
+    """Figures are written next to the markdown file, whatever it is called."""
+    from training.common import refuse_limited_default
+
+    with pytest.raises(SystemExit, match="--limit"):
+        refuse_limited_default(32, (DOCS_DIR / "try.md").parent, DOCS_DIR, "--markdown")
+    refuse_limited_default(32, (tmp_path / "try.md").parent, DOCS_DIR, "--markdown")

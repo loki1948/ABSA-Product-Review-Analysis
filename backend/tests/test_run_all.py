@@ -215,3 +215,15 @@ def test_lock_of_a_live_process_is_respected(tmp_path: Path) -> None:
     recorder = Recorder()
     assert run(build_steps(tmp_path), log_dir, recorder) == 2
     assert recorder.executed == []
+
+
+def test_lock_is_respected_while_the_training_child_is_alive(tmp_path: Path) -> None:
+    """The parent was killed but its training process still runs: no second training."""
+    import os
+
+    log_dir = tmp_path / "logs"
+    log_dir.mkdir()
+    (log_dir / LOCK_NAME).write_text(f"999999999\n{os.getpid()}", encoding="utf-8")
+    recorder = Recorder()
+    assert run(build_steps(tmp_path), log_dir, recorder) == 2
+    assert recorder.executed == []

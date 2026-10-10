@@ -135,6 +135,24 @@ def _add_runs(paragraph: Any, text: str) -> None:
             paragraph.add_run(piece)
 
 
+def _no_row_breaks(table: Any) -> None:
+    """Stop Word from splitting a table row over two pages."""
+    from docx.oxml import OxmlElement
+
+    for row in table.rows:
+        properties = row._tr.get_or_add_trPr()
+        properties.append(OxmlElement("w:cantSplit"))
+
+
+def _widen(table: Any, column: int, width: Any, total: Any) -> None:
+    """Give ``column`` the stated width and share the rest among the other columns."""
+    table.autofit = False
+    others = (total - width) // max(1, len(table.columns) - 1)
+    for row in table.rows:
+        for index, cell in enumerate(row.cells):
+            cell.width = width if index == column else others
+
+
 def write_docx(parts: list[tuple[str, str, Path]], target: Path) -> None:
     """``parts`` is (appendix title or "", markdown, folder its images are relative to)."""
     import docx
@@ -158,6 +176,8 @@ def write_docx(parts: list[tuple[str, str, Path]], target: Path) -> None:
         for kind, content in parse_blocks(markdown):
             if kind == "heading":
                 level, text = content
+                if index and level == 1:
+                    continue  # the appendix title already says it
                 if index == 0 and level == 1:
                     document.add_heading(_plain(text), level=0)  # document title
                 else:
@@ -168,8 +188,11 @@ def write_docx(parts: list[tuple[str, str, Path]], target: Path) -> None:
                 _add_runs(document.add_paragraph(style="Intense Quote"), content)
             elif kind in ("bullets", "numbers"):
                 style = "List Bullet" if kind == "bullets" else "List Number"
-                for item in content:
-                    _add_runs(document.add_paragraph(style=style), item)
+                for n, item in enumerate(content):
+                    paragraph = document.add_paragraph(style=style)
+                    # A short list stays whole, so its last item is not stranded on a new page.
+                    paragraph.paragraph_format.keep_with_next = len(content) <= 6 and n < len(content) - 1
+                    _add_runs(paragraph, item)
             elif kind == "code":
                 for code_line in content.split("\n"):
                     paragraph = document.add_paragraph()
@@ -177,20 +200,31 @@ def write_docx(parts: list[tuple[str, str, Path]], target: Path) -> None:
                     run = paragraph.add_run(code_line)
                     run.font.name, run.font.size = "Consolas", Pt(8.5)
             elif kind == "table" and content:
+                # Keep the line that introduces the table, and all of its rows, on
+                # one page: a table cut in two by a page break is hard to read.
+                if document.paragraphs and len(content) <= 24:
+                    document.paragraphs[-1].paragraph_format.keep_with_next = True
                 table = document.add_table(rows=len(content), cols=len(content[0]))
                 table.style = "Light Grid Accent 1"
+                _no_row_breaks(table)
+                wide = {"Sentence": 0, "Review": 1}.get(content[0][0] if content[0][0] == "Sentence" else content[0][1] if len(content[0]) > 1 else "")
+                if wide is not None:
+                    _widen(table, wide, Cm(7.5), Cm(16))
                 for r, row in enumerate(content):
                     for c, cell in enumerate(row[: len(content[0])]):
                         table.cell(r, c).text = _plain(cell)
-                        for run in table.cell(r, c).paragraphs[0].runs:
+                        paragraph = table.cell(r, c).paragraphs[0]
+                        paragraph.paragraph_format.keep_with_next = r < len(content) - 1 and len(content) <= 24
+                        for run in paragraph.runs:
                             run.font.size = Pt(9)
                             run.bold = r == 0
-                document.add_paragraph()
+                document.add_paragraph().paragraph_format.space_after = Pt(2)
             elif kind == "image":
                 alt, relative = content
                 path = base / relative
                 if path.exists():
-                    document.add_picture(str(path), width=Cm(15))
+                    document.add_picture(str(path), width=Cm(13.5))
+                    document.paragraphs[-1].paragraph_format.keep_with_next = True  # picture + caption
                     caption = document.add_paragraph(alt)
                     caption.runs[0].italic = True
                 else:
@@ -218,6 +252,19 @@ def write_pptx(deck: str, target: Path, base: Path, pictures: list[tuple[str, Pa
                 run.font.size = Pt(32)
         return slide
 
+    def add_pictures() -> None:
+        for picture_title, path in pictures:
+            if not path.exists():
+                logger.warning("Screenshot not found, slide skipped: %s", path)
+                continue
+            slide = titled(picture_title)
+            picture = slide.shapes.add_picture(str(path), Inches(0.6), Inches(1.45), height=Inches(5.8))
+            if picture.width > width - Inches(1.2):  # very wide image: fit the width instead
+                ratio = (width - Inches(1.2)) / picture.width
+                picture.width, picture.height = int(picture.width * ratio), int(picture.height * ratio)
+            picture.left = int((width - picture.width) / 2)
+
+    pictures_added = False
     for number, (title, blocks) in enumerate(split_slides(deck)):
         if number == 0:
             slide = presentation.slides.add_slide(presentation.slide_layouts[0])
@@ -232,15 +279,15 @@ def write_pptx(deck: str, target: Path, base: Path, pictures: list[tuple[str, Pa
         for kind, content in blocks:
             if kind == "table" and content:
                 rows, cols = len(content), len(content[0])
-                height = Inches(0.42) * rows
+                height = Inches(0.55) * rows
                 shape = slide.shapes.add_table(rows, cols, Inches(0.6), top, width - Inches(1.2), height)
                 for r, row in enumerate(content):
                     for c, cell in enumerate(row[:cols]):
                         shape.table.cell(r, c).text = _plain(cell)
                         for paragraph in shape.table.cell(r, c).text_frame.paragraphs:
                             for run in paragraph.runs:
-                                run.font.size = Pt(15)
-                top += height + Inches(0.25)
+                                run.font.size = Pt(18)
+                top += height + Inches(0.3)
                 continue
             if kind == "image":
                 path = base / content[1]
@@ -249,7 +296,7 @@ def write_pptx(deck: str, target: Path, base: Path, pictures: list[tuple[str, Pa
                     top += Inches(4.8)
                 continue
             lines = content if kind in ("bullets", "numbers") else content.split("\n") if kind == "code" else [content]
-            box_height = Inches(0.42 if kind != "code" else 0.3) * len(lines) + Inches(0.15)
+            box_height = Inches(0.55 if kind != "code" else 0.36) * len(lines) + Inches(0.15)
             box = slide.shapes.add_textbox(Inches(0.6), top, width - Inches(1.2), box_height)
             frame = box.text_frame
             frame.word_wrap = True
@@ -258,27 +305,25 @@ def write_pptx(deck: str, target: Path, base: Path, pictures: list[tuple[str, Pa
                 prefix = "• " if kind == "bullets" else f"{n + 1}. " if kind == "numbers" else ""
                 run = paragraph.add_run()
                 run.text = prefix + (line if kind == "code" else _plain(line))
-                run.font.size = Pt(14 if kind == "code" else 20)
+                run.font.size = Pt(16 if kind == "code" else 26)
                 if kind == "code":
                     run.font.name = "Consolas"
                 if kind == "quote":
                     run.font.italic = True
             top += box_height + Inches(0.15)
+        if title == PICTURES_AFTER:
+            add_pictures()
+            pictures_added = True
 
-    for title, path in pictures:
-        if not path.exists():
-            logger.warning("Screenshot not found, slide skipped: %s", path)
-            continue
-        slide = titled(title)
-        picture = slide.shapes.add_picture(str(path), Inches(0.6), Inches(1.5), height=Inches(5.6))
-        if picture.width > width - Inches(1.2):  # very wide image: fit the width instead
-            ratio = (width - Inches(1.2)) / picture.width
-            picture.width, picture.height = int(picture.width * ratio), int(picture.height * ratio)
-        picture.left = int((width - picture.width) / 2)
+    if not pictures_added:
+        add_pictures()
 
     target.parent.mkdir(parents=True, exist_ok=True)
     presentation.save(str(target))
 
+
+# The screenshot slides are placed right after the slide with this title.
+PICTURES_AFTER = "System"
 
 APPENDICES = [
     ("Appendix A: Full evaluation results", "results.md"),

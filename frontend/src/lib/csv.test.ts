@@ -53,11 +53,8 @@ describe("parseReviews", () => {
     expect(parseReviews("")).toEqual({ reviews: [], skipped: [], truncated: false });
   });
 
-  it("reads every line as one review when no column is named review or text", () => {
-    expect(parseReviews("comment,stars\nGreat screen,5\n").reviews).toEqual([
-      "comment,stars",
-      "Great screen,5",
-    ]);
+  it("uses the first column of a file when no column is named review or text", () => {
+    expect(parseReviews("comment,stars\nGreat screen,5\n").reviews).toEqual(["comment", "Great screen"]);
   });
 });
 
@@ -95,6 +92,7 @@ describe("parseReviews with trailing blank lines", () => {
   });
 
   it("still reports a blank line between reviews", () => {
-    expect(parseReviews("Good\n\nFine\n\n").skipped).toEqual([{ line: 2, reason: "blank" }]);
+    expect(parseReviews("Good\n\nFine\n\n", "paste").skipped).toEqual([{ line: 2, reason: "blank" }]);
+    expect(parseReviews("Good\n\nFine\n\n", "file").skipped).toEqual([{ line: 2, reason: "blank" }]);
   });
 });

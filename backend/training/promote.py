@@ -147,6 +147,35 @@ def deployed_models(current_report: dict[str, Any] | None, models_dir: Path) -> 
     }
 
 
+def decide(
+    name: str,
+    candidate_report: dict[str, Any],
+    current_report: dict[str, Any] | None,
+    models_dir: Path,
+    candidates_dir: Path,
+) -> str:
+    """The verdict for one model slot.
+
+    ``promote`` / ``promote (nothing deployed)``  install the candidate
+    ``already installed``                         the candidate is the installed model
+    ``needs decision ...``                        a person has to judge
+    """
+    installed = models_dir / name
+    candidate_log = read_log(candidates_dir / name)
+    has_model = installed.exists() and not {item.name for item in installed.iterdir()} <= {".gitkeep"}
+    if has_model and candidate_log and read_log(installed) == candidate_log:
+        return "already installed"
+    if not has_model:
+        return "promote (nothing deployed)"
+    if name not in deployed_models(current_report, models_dir):
+        # Something is installed, but no evaluation of it exists (run_all was
+        # interrupted, or the folder was changed by hand). Installing over it
+        # would skip the comparison this script exists for.
+        return ("needs decision (the installed model was not evaluated; "
+                "run `python -m training.run_all` to evaluate it)")
+    return verdict(decision_values(current_report, name), decision_values(candidate_report, name))
+
+
 def _same_files(source: Path, target: Path) -> bool:
     """Every file of ``source`` exists in ``target`` with the same size."""
     return all(
@@ -188,10 +217,23 @@ def promote(name: str, models_dir: Path, candidates_dir: Path, stamp: str) -> Pa
         if {item.name for item in target.iterdir()} <= {".gitkeep"}:
             shutil.rmtree(target)  # only the placeholder: nothing to keep
         else:
-            # A model, or anything else someone put here: keep it.
+            # A model, or anything else someone put here: keep it. A plain
+            # rename either moves the whole folder or changes nothing; a
+            # copy-and-delete could stop halfway and leave a broken model.
             archive = models_dir / "previous" / f"{name}-{stamp}"
             archive.parent.mkdir(parents=True, exist_ok=True)
-            shutil.move(str(target), str(archive))
+            try:
+                os.rename(target, archive)
+            except OSError as exc:
+                shutil.rmtree(incoming, ignore_errors=True)
+                try:
+                    archive.parent.rmdir()  # only if this call created it and it is still empty
+                except OSError:
+                    pass
+                raise RuntimeError(
+                    f"{target} is in use, so it was left as it is. Stop the backend "
+                    f"(it keeps the model files open) and run this again."
+                ) from exc
     os.replace(incoming, target)
     return archive
 
@@ -219,21 +261,23 @@ def main() -> int:
     # model installed now; otherwise there is nothing valid to compare with.
     deployed = deployed_models(current_report, MODELS_DIR)
     if current_report is None:
-        print("No installed models were evaluated (fresh setup): nothing to compare with.\n")
+        print("No evaluation of installed models was found.\n")
     else:
         print(render_comparison(current_report, candidate_report, deployed))
 
     verdicts = {
-        name: verdict(
-            decision_values(current_report, name) if current_report and name in deployed else None,
-            decision_values(candidate_report, name),
-        )
-        for name in MODELS
+        name: decide(name, candidate_report, current_report, MODELS_DIR, CANDIDATES_DIR) for name in MODELS
     }
-    undecided = [name for name, value in verdicts.items() if value == "needs decision"]
+    print("Decision per model:")
+    for name, value in verdicts.items():
+        print(f"  {name}: {value}")
+    undecided = [name for name, value in verdicts.items() if value.startswith("needs decision")]
     if args.apply:
         stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
         for name, value in verdicts.items():
+            if value == "already installed":
+                promote(name, MODELS_DIR, CANDIDATES_DIR, stamp)  # repairs an incomplete copy
+                continue
             if not value.startswith("promote"):
                 logger.warning("%s: not installed (%s)", name, value)
                 continue

@@ -129,12 +129,16 @@ def _process_alive(pid: int) -> bool:
     if sys.platform == "win32":
         import ctypes
 
-        handle = ctypes.windll.kernel32.OpenProcess(0x1000, False, pid)  # query limited information
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32.OpenProcess.restype = ctypes.c_void_p
+        kernel32.GetExitCodeProcess.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_ulong)]
+        kernel32.CloseHandle.argtypes = [ctypes.c_void_p]
+        handle = kernel32.OpenProcess(0x1000, False, pid)  # query limited information
         if not handle:
-            return False
+            return ctypes.get_last_error() == 5  # access denied: it exists, under another account
         code = ctypes.c_ulong()
-        ctypes.windll.kernel32.GetExitCodeProcess(handle, ctypes.byref(code))
-        ctypes.windll.kernel32.CloseHandle(handle)
+        kernel32.GetExitCodeProcess(handle, ctypes.byref(code))
+        kernel32.CloseHandle(handle)
         return code.value == 259  # STILL_ACTIVE
     try:
         os.kill(pid, 0)
@@ -146,20 +150,33 @@ def _process_alive(pid: int) -> bool:
 
 
 def _lock_owner_alive(lock: Path) -> bool:
-    """False only when the lock names a process that no longer exists."""
+    """False only when every process the lock names (run_all and the step it
+    started) is gone."""
     try:
-        return _process_alive(int(lock.read_text(encoding="utf-8").strip()))
+        pids = [int(part) for part in lock.read_text(encoding="utf-8").split()]
     except (OSError, ValueError):
         return True  # unreadable lock: assume a run is active rather than start a second one
+    return not pids or any(_process_alive(pid) for pid in pids)
 
 
-def execute_step(step: Step, log_path: Path) -> int:
-    """Run one step as a child process; its output goes to ``log_path``."""
+def execute_step(step: Step, log_path: Path, lock: Path | None = None) -> int:
+    """Run one step as a child process; its output goes to ``log_path``.
+
+    The child's process id is added to ``lock``: if this process is killed, the
+    training it started keeps running, and the lock must still say so.
+    """
     with log_path.open("w", encoding="utf-8") as log:
-        return subprocess.run(
+        child = subprocess.Popen(
             [sys.executable, "-m", step.module, *step.args],
             cwd=BACKEND_DIR, stdout=log, stderr=subprocess.STDOUT,
-        ).returncode
+        )
+        if lock is not None:
+            lock.write_text(f"{os.getpid()}\n{child.pid}", encoding="utf-8")
+        try:
+            return child.wait()
+        finally:
+            if lock is not None and lock.exists():
+                lock.write_text(str(os.getpid()), encoding="utf-8")
 
 
 def run(
@@ -185,7 +202,10 @@ def run(
                 logger.info("%s: already complete, skipped", step.name)
                 continue
             logger.info("%s: started (log: %s)", step.name, log_dir / f"{step.name}.log")
-            code = execute(step, log_dir / f"{step.name}.log")
+            if execute is execute_step:
+                code = execute_step(step, log_dir / f"{step.name}.log", lock)
+            else:
+                code = execute(step, log_dir / f"{step.name}.log")
             if code != 0:
                 logger.error("%s: failed with exit code %d", step.name, code)
                 return code

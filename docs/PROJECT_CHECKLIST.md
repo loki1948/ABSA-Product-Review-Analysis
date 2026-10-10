@@ -10,12 +10,19 @@ How to read the tables:
 - **Tested**: how it was verified, with the evidence.
 - **Reviewed**: "yes" means an independent reviewer (a separate reviewer with
   no part in writing the code) examined it on 2026-10-10. "fix" means it was
-  changed afterwards in response to that review; those changes are covered by
-  new tests but have **not** been reviewed a second time.
+  changed in response to a review. There were two reviews: the first of the
+  whole branch, the second of the fixes for the first. The fixes for the
+  second review are covered by new tests and have **not** been reviewed again
+  (section 3).
 
-Test totals at the last run: backend `pytest` 139 passed, 0 skipped, 0 failed
-(including 10 tests on the real models); frontend `npm test` 103 passed;
+Test totals at the last run: backend `pytest` 151 passed, 0 skipped, 0 failed
+(including 10 tests on the real models); frontend `npm test` 109 passed;
 `npm run build` passes.
+
+Each open item is waiting for exactly one of four things, named in section 4:
+a **remote repository**, a **Docker environment**, an **external backup**, or
+the **assignment brief**. Everything else in this file is verified on this
+machine.
 
 ## 1. Assignment requirements
 
@@ -51,8 +58,8 @@ the brief is provided.**
 | Module | Implemented | Tested | Reviewed |
 |---|---|---|---|
 | Three BERT models on both domains | Yes | Test set: aspect F1 0.8462; aspect sentiment accuracy 0.8151, macro-F1 0.7456; end-to-end F1 0.6977; overall macro-F1 0.7202 | yes: published numbers match the report files |
-| Training chain `run_all` | Yes | 19 tests; one full run completed | fix: stale evaluations are detected, a fresh clone can finish, the lock names its owner, the display is kept awake |
-| Promotion `promote` | Yes | 16 tests; all three candidates met the rule on both domains | fix: never deletes a folder that holds more than the placeholder; installs by rename; compares only with models the report describes |
+| Training chain `run_all` | Yes | 20 tests; one full run completed | fix: stale evaluations are detected, a fresh clone can finish, the lock names its owner, the display is kept awake |
+| Promotion `promote` | Yes | 21 tests; all three candidates met the rule on both domains | fix: never deletes a folder that holds more than the placeholder; installs by rename; compares only with models the report describes |
 | `--limit` trial runs | Yes | `test_limit_cannot_overwrite_published_or_deployed_outputs` | fix: refused on real output paths |
 
 ### 2.3 Evaluation
@@ -76,7 +83,7 @@ the brief is provided.**
 | Error states: backend unreachable, models not loaded, invalid input, server error | Yes | Tests; browser on every page | yes |
 | History: paging, filter, full analysis, delete | Yes | `History.test.tsx`; browser | yes |
 | Dashboard and model performance | Yes | `Dashboard.test.tsx`; browser | yes |
-| Batch: paste or CSV, chunks, progress, cancel, export | Yes | 12 tests; browser: real file upload of `demo_reviews.csv` (12 reviews), real download of `absa-results.csv` (28 data rows) | fix: formula characters neutralised in the export; pasted reviews kept whole; continues instead of resending; stops when the page is left |
+| Batch: paste or CSV, chunks, progress, cancel, export | Yes | 12 page tests and 30 CSV tests; browser: real file upload of `demo_reviews.csv` (12 reviews), real download of `absa-results.csv` (28 data rows) | fix (both reviews): formula characters neutralised in the export; an uploaded file is read as CSV and typed text as one review per line; continues instead of resending; stops when the page is left |
 | Phone width (390 px) | Yes | Scripted browser check on all five pages: no sideways scrolling, nothing cut off. Found and fixed an overflow on Home, Analyzer and History | not reviewed (reviewer had no browser) |
 | Screenshots | Yes | `docs/screenshots` (11 images) from `frontend/scripts/browser-checks.mjs` | not applicable |
 
@@ -85,7 +92,7 @@ the brief is provided.**
 | Module | Implemented | Tested | Reviewed |
 |---|---|---|---|
 | Rule-and-lexicon baseline | Yes | 14 tests; `docs/baseline.md`: aspect F1 0.3765 against 0.8462 | yes: same data and metric functions, supports match exactly |
-| Error analysis | Yes | 11 tests; `docs/error_analysis.md` | yes |
+| Error analysis | Yes | 12 tests; `docs/error_analysis.md` | yes |
 | Transfer to an unseen domain | Yes | `docs/transfer.md`: laptops-only aspect extractor on restaurants, F1 0.3704 against 0.8715 | fix: the comparison is now limited to aspect extraction. The earlier sentiment model has no training record, so no claim is made from it |
 | Other product categories | Illustration only | Twelve hand-written reviews; no annotated data, no accuracy figure | yes |
 | Notebooks | Yes | All three execute without error | partly (contents not judged) |
@@ -96,8 +103,8 @@ the brief is provided.**
 |---|---|---|---|
 | README, CONTRIBUTING, architecture, methodology, API | Yes | Commands are the ones that were run | fix: methodology no longer quotes two figures that no report file contains |
 | Report source `docs/report.md`, slides source `docs/slides.md` | Yes | Generated by `training/report.py` (6 tests) from the report files | yes: every 4-decimal figure traced to a report file |
-| `docs/submission/ABSA_Project_Report.docx` and `.pdf` | Yes | Built by `training/export.py` (7 tests) and Word; 29 pages; includes appendices A to D and four screenshots | Layout not proofread by a person |
-| `docs/submission/ABSA_Presentation.pptx` and `.pdf` | Yes | 18 slides, four of them screenshots; two slides inspected as images | Plain default design; not proofread by a person |
+| `docs/submission/ABSA_Project_Report.docx` and `.pdf` | Yes | Built by `training/export.py` (10 tests) and Word; 27 pages; appendices A to D and four screenshots. Proofread as page images: every page of the first build, then 12 pages again after the layout fixes; text scanned for placeholders, missing images and leftover Markdown (none) | Names, roll numbers and supervisor are not in the repository and so not on the title page |
+| `docs/submission/ABSA_Presentation.pptx` and `.pdf` | Yes | 18 slides, four of them screenshots placed after the System slide. Every slide inspected as an image in the first build, six again after the layout fixes; numbers match the report | Plain default design; no names on the title slide |
 | Demo script, model sharing, model recovery | Yes | Demo steps match the browser run | not reviewed |
 
 ### 2.8 Delivery
@@ -105,45 +112,92 @@ the brief is provided.**
 | Module | Implemented | Tested | Reviewed |
 |---|---|---|---|
 | Git branch | Yes | Clean tree; no weights, datasets or env files tracked | yes |
-| CI workflow `.github/workflows/ci.yml` | Yes | **Not run**: the repository has no remote | no |
-| Model archive | Yes | `absa-models.zip` (1.14 GB) with SHA-256 file, made by `scripts/package_models.ps1`; weights sizes match the deployed ones | no |
-| Docker | Written | **Never run**: Docker is not installed here | static reading only |
+| CI workflow `.github/workflows/ci.yml` | Yes | **Not run: awaiting a remote.** The second reviewer ran the fast backend suite on a clean export of the repository (no models, no data) and it passed, which is what the workflow does; an actual run on GitHub has not happened | static reading |
+| Model archives | Yes | `absa-models.zip` (deployed models, 18 files) and `absa-history.zip` (earlier models, run records, old log, 35 files), each with a SHA-256 file. Every entry of both was compared by hash with the file on disk: all identical. **Awaiting an external backup**: both archives are still on this machine's only disk | script reviewed statically |
+| Docker | Written | **Untested: awaiting a Docker environment.** Never run; Docker is not installed here | static reading only |
 
-## 3. Independent review: what remains
+## 3. Independent reviews
 
-Fixed: all 11 "Important" findings (sections above, marked "fix").
-Not fixed, recorded as minor:
+**First review** (whole branch): no critical findings, 11 important ones. All
+11 were fixed with tests.
+
+**Second review** (of those fixes): 5 of the 11 fully closed, 6 partly closed,
+and 7 new important findings, all in the fixes themselves. All 7 are fixed with
+tests:
+
+| Finding | Fix | Test |
+|---|---|---|
+| `promote --apply` installed candidates without comparison when the installed model had not been evaluated | A slot with an unevaluated installed model gets "needs decision" | `test_installed_model_that_was_never_evaluated_is_not_replaced_unseen`, `test_stale_current_report_does_not_count_as_a_comparison` |
+| Uploaded CSV files without a `review` column were read as whole lines | Files are always read as CSV with the first-column fallback | `csv.review2.test.ts` |
+| A pasted first line containing "Text" or "Review" was taken for a header | Typed text is always one review per line | `csv.review2.test.ts` |
+| A locked file could leave the installed model half-moved | The old model is archived by a single rename; on failure it stays intact | `test_model_in_use_is_left_intact` |
+| `--limit` could still overwrite the published figures | Refused whenever the output folder is `docs/` | `test_limit_cannot_overwrite_the_published_figures` |
+| The recovery guide described a repair that did not always happen | "already installed" models are always checked and re-copied if incomplete; guide corrected | `test_candidate_that_is_already_installed_says_so_and_can_be_repaired` |
+| A killed parent's lock could be taken over while its training child still ran | The lock also names the child process | `test_lock_is_respected_while_the_training_child_is_alive` |
+
+**These last fixes have not been reviewed.** The review is therefore not yet
+"satisfactory" in the sense required for merging: a third, short review of
+this last round is the open step.
+
+Recorded as minor and not fixed:
 
 - Tracked report files contain the local path `C:\Users\Admin\...` in the
-  training logs' `output_dir`, and `/api/model-info` serves it.
+  training logs, and `/api/model-info` serves it.
 - No request-body size limit when running plain uvicorn.
-- `clean_text` removes text between `<` and `>` ("battery <3 hours, screen >13
-  inch"); a review consisting only of a tag is stored as empty text.
-- A batch that fails on saving can leave earlier reviews saved.
+- `clean_text` removes text between `<` and `>`; a review that is only a tag
+  is stored as empty text.
+- A batch chunk that fails after the server saved part of it is sent again by
+  "Continue", which can duplicate those saved reviews.
 - `requirements.txt` gives minimum versions only; there is no lock file.
+- Two starters racing for a stale lock; models without a training log cannot
+  be told apart by the staleness checks; an archive folder with the same
+  second-resolution name would nest.
+- `evaluate --domains laptops` without `--limit` overwrites the two-domain
+  results (the real-model test then fails, which reveals it).
 - Docker: the health check allows about 135 seconds for loading the models;
   the backend container runs as root.
-- `ConfirmDialog` has no focus trap; an out-of-range `?page=` in History shows
-  the empty message; the Analyzer reads the health status only once.
-- The baseline finds an aspect's clause by text search, a small handicap for
-  the baseline.
+- `ConfirmDialog` has no focus trap; an out-of-range `?page=` in History
+  shows the empty message; the Analyzer reads the health status only once.
+- The apostrophe that neutralises a formula stays visible in the exported CSV.
 - The report's concluding sentences are fixed text and would not follow
   different numbers after a retrain.
 
-## 4. Pending
+## 4. Pending, by what each item is waiting for
 
-1. **Provide the assignment brief or marking scheme**, so section 1 can be
-   checked against the real requirements.
-2. **Run Docker** on a machine that has it: `docker compose up --build`, open
-   http://localhost:8080, analyse one review, check History and Dashboard.
-3. **Push to a remote** so CI runs once; merge into `main` after that.
-4. **Copy `absa-models.zip` and its `.sha256` off this machine**; until then
-   every copy of the models is on one disk.
-5. A person should proofread the DOCX and the slides and restyle the slides if
-   a template is required.
-6. Decide on removing the 2.44 GB of model backups
-   ([model_recovery.md](model_recovery.md) lists what each removal costs).
-7. The fixes made after the review have not been reviewed a second time.
+**Awaiting the assignment brief**
+
+1. Check section 1 against the real requirements. No brief, synopsis or
+   marking scheme has been supplied; none was invented.
+2. Names, roll numbers, course and supervisor on the report's title page and
+   the title slide; the required template for the slides, if there is one.
+
+**Awaiting an external backup**
+
+3. Copy `absa-models.zip`, `absa-history.zip` and their `.sha256` files to
+   another physical device or a cloud location, then verify there with
+   `Get-FileHash <file> -Algorithm SHA256` against the `.sha256` files.
+   This machine has a single disk; a OneDrive folder exists but nothing was
+   uploaded to it.
+4. Only after that: decide on removing the three model folders in
+   `models/candidates` (1.22 GB) and `models/train_sentiment_aspect.log`.
+   `models/previous` and `models/sentiment_joint_backup` are to be kept.
+
+**Awaiting a remote repository**
+
+5. Push the branch; the CI workflow has never run and is not claimed to pass.
+6. Merge `feature/models-evaluation` into `main` after CI has run and the
+   last round of fixes has been reviewed. The branch is intact and unmerged.
+
+**Awaiting a Docker environment**
+
+7. `docker compose up --build`, open http://localhost:8080, analyse one
+   review, check History and Dashboard. Until that succeeds Docker stays
+   marked untested everywhere (README, report, this file).
+
+**Can be done here, not done yet**
+
+8. A third review, limited to the fixes for the second review.
+9. A person's own read of the DOCX and the slides.
 
 ## 5. Known limitations of the result
 

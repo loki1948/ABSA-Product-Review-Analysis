@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 
 import SentimentBadge from "../components/SentimentBadge";
 import StateMessage from "../components/StateMessage";
-import { MAX_BATCH_FILE_REVIEWS, parseReviews, toCsv } from "../lib/csv";
+import { MAX_BATCH_FILE_REVIEWS, parseReviews, toCsv, type ReviewSource } from "../lib/csv";
 import { describeError, type ErrorDescription } from "../lib/errors";
 import { badgeClass, sentimentLabel } from "../lib/sentiment";
 import { analyzeReviews } from "../services/api";
@@ -24,6 +24,8 @@ function download(filename: string, text: string) {
 
 export default function Batch() {
   const [text, setText] = useState("");
+  // An uploaded file is read as CSV; text typed or edited in the box is one review per line.
+  const [source, setSource] = useState<ReviewSource>("paste");
   const [save, setSave] = useState(true);
   const [status, setStatus] = useState<Status>("idle");
   const [results, setResults] = useState<AnalysisResponse[]>([]);
@@ -44,7 +46,7 @@ export default function Batch() {
     [],
   );
 
-  const parsed = useMemo(() => parseReviews(text), [text]);
+  const parsed = useMemo(() => parseReviews(text, source), [text, source]);
   const count = parsed.reviews.length;
   const running = status === "running";
   // After a stop, the same list can be continued where it stopped, so reviews
@@ -55,7 +57,10 @@ export default function Batch() {
 
   async function handleFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
-    if (file) setText(await file.text());
+    if (file) {
+      setText(await file.text());
+      setSource("file");
+    }
     event.target.value = ""; // choosing the same file again must fire again
   }
 
@@ -120,8 +125,8 @@ export default function Batch() {
             className="sr-only"
           />
           <span className="text-xs text-slate-500">
-            Uses the column named <code>review</code> or <code>text</code>, or the first column. At
-            most {MAX_BATCH_FILE_REVIEWS} reviews.
+            A file is read as CSV: the column named <code>review</code> or <code>text</code>, or
+            the first column. At most {MAX_BATCH_FILE_REVIEWS} reviews.
           </span>
         </div>
         <label htmlFor="batch-text" className="block text-sm font-medium">
@@ -130,7 +135,10 @@ export default function Batch() {
         <textarea
           id="batch-text"
           value={text}
-          onChange={(event) => setText(event.target.value)}
+          onChange={(event) => {
+            setText(event.target.value);
+            setSource("paste");
+          }}
           rows={8}
           disabled={running}
           placeholder={"The screen is gorgeous but the battery life is terrible.\nGreat food, slow service."}

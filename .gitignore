@@ -40,3 +40,5 @@ Thumbs.db
 absa-models.zip
 absa-models.zip.sha256
 *.incoming/
+absa-history.zip
+absa-history.zip.sha256

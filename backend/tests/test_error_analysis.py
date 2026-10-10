@@ -90,3 +90,17 @@ def test_transfer_never_shows_full_certainty_for_a_probability_below_one() -> No
     reports = {"results": {"laptops": scope(0.8, 0.7), "restaurants": scope(0.8, 0.7)}}
     samples = [("phones", "Fast.", "positive", [("speed", "positive", 0.9996)])]
     assert "speed (positive, 99%)" in render_transfer(reports, reports, samples)
+
+
+def test_misclassified_sample_never_shows_full_certainty() -> None:
+    from training.error_analysis import render_error_analysis
+
+    analysis = {
+        "extraction": {"counts": {"correct": 1, "boundary": 0, "missed": 0, "spurious": 0},
+                       "missed_terms": [], "by_length": {"one word": [1, 1], "several words": [0, 0]}},
+        "sentiment": {"total": 1, "errors": 1, "confusions": [(("neutral", "positive"), 1)],
+                      "bands": [("below 0.60", 0, None), ("0.60 to 0.80", 0, None), ("0.80 and above", 1, 0.0)],
+                      "sample": [("Nice screen.", "screen", "neutral", "positive", 0.9996)]},
+    }
+    text = render_error_analysis({"laptops": analysis}, "now")
+    assert "| Nice screen. | screen | neutral | positive | 99% |" in text
