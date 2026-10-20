@@ -227,3 +227,40 @@ def test_lock_is_respected_while_the_training_child_is_alive(tmp_path: Path) -> 
     recorder = Recorder()
     assert run(build_steps(tmp_path), log_dir, recorder) == 2
     assert recorder.executed == []
+
+
+def test_lock_naming_two_dead_processes_is_taken_over(tmp_path: Path) -> None:
+    """Third review: a lock with both a parent and a child id, both gone, is stale."""
+    log_dir = tmp_path / "logs"
+    log_dir.mkdir()
+    (log_dir / LOCK_NAME).write_text("999999999\n999999998", encoding="utf-8")
+    recorder = Recorder()
+    assert run(build_steps(tmp_path), log_dir, recorder) == 0
+    assert recorder.executed[0] == "aspect"
+
+
+def test_lock_names_the_training_child_while_it_runs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import os
+
+    import training.run_all as run_all_module
+    from training.run_all import execute_step
+
+    lock = tmp_path / LOCK_NAME
+    lock.write_text(str(os.getpid()), encoding="utf-8")
+    seen: list[str] = []
+
+    class Child:
+        pid = 4242
+
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            pass
+
+        def wait(self) -> int:
+            seen.append(lock.read_text(encoding="utf-8"))
+            return 0
+
+    monkeypatch.setattr(run_all_module.subprocess, "Popen", Child)
+    step = Step("aspect", "training.train_aspect", (), tmp_path / "done")
+    assert execute_step(step, tmp_path / "aspect.log", lock) == 0
+    assert seen == [f"{os.getpid()}\n4242"]
+    assert lock.read_text(encoding="utf-8") == str(os.getpid())

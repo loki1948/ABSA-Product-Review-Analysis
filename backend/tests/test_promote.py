@@ -263,3 +263,81 @@ def test_model_in_use_is_left_intact(tmp_path: Path, monkeypatch: pytest.MonkeyP
     assert (models / "sentiment" / "training_log.json").exists()
     assert not (models / "sentiment.incoming").exists()
     assert not (models / "previous").exists()
+
+
+# --- findings from the third review -----------------------------------------
+
+
+def test_installed_model_without_a_training_log_is_named_as_such(tmp_path: Path) -> None:
+    from training.promote import decide
+
+    models, candidates, candidate, current = _reports(tmp_path, {}, {"sentiment": "old"})
+    make_model(models / "sentiment", "unknown", finished=False)
+    verdict_text = decide("sentiment", candidate, current, models, candidates)
+    assert verdict_text.startswith("needs decision") and "training_log.json" in verdict_text
+
+
+def test_unevaluated_model_with_an_empty_slot_says_to_fill_it_first(tmp_path: Path) -> None:
+    """run_all evaluates the installed models only when all three slots are filled."""
+    from training.promote import decide
+
+    models, candidates, candidate, _ = _reports(tmp_path, {"sentiment": "restored"}, None)
+    assert "--apply` to fill the empty slots first" in decide("sentiment", candidate, None, models, candidates)
+
+    full, full_candidates, full_candidate, _ = _reports(
+        tmp_path / "full", {"aspect_extraction": "a", "sentiment": "s", "overall_sentiment": "o"}, None)
+    text = decide("sentiment", full_candidate, None, full, full_candidates)
+    assert "fill the empty slots" not in text and "training.run_all" in text
+
+
+def _run_main(models: Path, candidates: Path, candidate: dict[str, Any],
+              current: dict[str, Any] | None, monkeypatch: pytest.MonkeyPatch) -> int:
+    import json
+    import sys
+
+    import training.promote as promote_module
+
+    for which, data in (("candidate", candidate), ("current", current)):
+        if data is not None:
+            path = candidates / "eval" / which / "evaluation_report.json"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(data), encoding="utf-8")
+    monkeypatch.setattr(promote_module, "MODELS_DIR", models)
+    monkeypatch.setattr(promote_module, "CANDIDATES_DIR", candidates)
+    monkeypatch.setattr(sys, "argv", ["promote", "--apply"])
+    return promote_module.main()
+
+
+def test_apply_repairs_an_incomplete_installed_copy_and_says_so(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    import logging
+
+    models, candidates, candidate, current = _reports(tmp_path, {}, None)
+    for name in ("aspect_extraction", "sentiment", "overall_sentiment"):
+        (candidates / name / "model.safetensors").write_bytes(b"weights")
+        promote(name, models, candidates, "20261010-100000")
+    (models / "sentiment" / "model.safetensors").write_bytes(b"cut")
+
+    with caplog.at_level(logging.INFO, logger="promote"):
+        assert _run_main(models, candidates, candidate, current, monkeypatch) == 0
+    assert (models / "sentiment" / "model.safetensors").read_bytes() == b"weights"
+    assert "sentiment: the installed copy was incomplete" in caplog.text
+    assert "aspect_extraction: already installed and complete" in caplog.text
+
+
+def test_apply_continues_past_a_model_in_use(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    import os
+
+    models, candidates, candidate, current = _reports(tmp_path, {"sentiment": "old"}, {"sentiment": "old"})
+
+    def locked(source, target):
+        raise PermissionError("file in use")
+
+    monkeypatch.setattr(os, "rename", locked)
+    assert _run_main(models, candidates, candidate, current, monkeypatch) == 4
+    assert "sentiment" in caplog.text and "in use" in caplog.text
+    assert (models / "sentiment" / "config.json").read_text(encoding="utf-8") == "old"
+    assert (models / "aspect_extraction" / "config.json").read_text(encoding="utf-8") == "candidate-aspect_extraction"

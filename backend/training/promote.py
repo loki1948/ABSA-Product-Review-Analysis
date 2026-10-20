@@ -171,6 +171,15 @@ def decide(
         # Something is installed, but no evaluation of it exists (run_all was
         # interrupted, or the folder was changed by hand). Installing over it
         # would skip the comparison this script exists for.
+        if not (installed / "training_log.json").exists():
+            return ("needs decision (the installed model has no training_log.json, so it cannot be "
+                    "identified; restore the folder from models/previous or absa-models.zip, "
+                    "or move it away to install the candidate)")
+        if not all((models_dir / folder / "config.json").exists() for folder in MODELS):
+            # run_all evaluates the installed models only when all three are there.
+            return ("needs decision (the installed model was not evaluated; run "
+                    "`python -m training.promote --apply` to fill the empty slots first, "
+                    "then `python -m training.run_all` to evaluate it)")
         return ("needs decision (the installed model was not evaluated; "
                 "run `python -m training.run_all` to evaluate it)")
     return verdict(decision_values(current_report, name), decision_values(candidate_report, name))
@@ -272,17 +281,30 @@ def main() -> int:
     for name, value in verdicts.items():
         print(f"  {name}: {value}")
     undecided = [name for name, value in verdicts.items() if value.startswith("needs decision")]
+    failed = []
     if args.apply:
         stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
         for name, value in verdicts.items():
-            if value == "already installed":
-                promote(name, MODELS_DIR, CANDIDATES_DIR, stamp)  # repairs an incomplete copy
-                continue
-            if not value.startswith("promote"):
+            if value != "already installed" and not value.startswith("promote"):
                 logger.warning("%s: not installed (%s)", name, value)
                 continue
-            archive = promote(name, MODELS_DIR, CANDIDATES_DIR, stamp)
-            logger.info("%s: installed%s", name, f"; previous model moved to {archive}" if archive else "")
+            try:
+                archive = promote(name, MODELS_DIR, CANDIDATES_DIR, stamp)
+            except RuntimeError as exc:  # the model is in use; the other slots still go ahead
+                logger.error("%s: %s", name, exc)
+                failed.append(name)
+                continue
+            if value == "already installed":
+                # promote() re-copies an incomplete installed copy.
+                if archive:
+                    logger.info("%s: the installed copy was incomplete and has been copied again; "
+                                "the incomplete copy was moved to %s", name, archive)
+                else:
+                    logger.info("%s: already installed and complete", name)
+            else:
+                logger.info("%s: installed%s", name, f"; previous model moved to {archive}" if archive else "")
+    if failed:
+        return 4
     return 3 if undecided else 0
 
 

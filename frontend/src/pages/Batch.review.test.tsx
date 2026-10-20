@@ -18,7 +18,7 @@ const respond = (reviews: string[]): BatchAnalysisResponse => ({ total: reviews.
 const lines = (count: number) => Array.from({ length: count }, (_, i) => `review ${i + 1}`).join("\n");
 
 async function paste(text: string) {
-  await userEvent.click(screen.getByLabelText(/one review per line/i));
+  await userEvent.click(screen.getByRole("textbox", { name: "Reviews" }));
   await userEvent.paste(text);
 }
 

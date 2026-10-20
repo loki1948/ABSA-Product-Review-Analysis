@@ -105,6 +105,14 @@ function lineRows(input: string): Row[] {
 export type ReviewSource = "file" | "paste";
 
 /**
+ * How an uploaded file is read: a `.csv` file as CSV, anything else (a `.txt`
+ * file with one review per line) line by line, so its commas are kept.
+ */
+export function sourceForFile(file: { name: string; type: string }): ReviewSource {
+  return /\.csv$/i.test(file.name) || file.type === "text/csv" ? "file" : "paste";
+}
+
+/**
  * Extracts the reviews from an uploaded CSV file or from typed text.
  *
  * - `file`: read as CSV. The column named `review` or `text` is used; without

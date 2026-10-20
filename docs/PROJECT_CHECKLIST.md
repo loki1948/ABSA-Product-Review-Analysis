@@ -1,6 +1,6 @@
 # Full-project checklist
 
-State on 2026-10-10. **The project is not declared 100% complete**: the
+State on 2026-10-20. **The project is not declared 100% complete**: the
 assignment's own requirements could not be checked (section 1), Docker has not
 been run, and the items in section 4 are open.
 
@@ -10,14 +10,17 @@ How to read the tables:
 - **Tested**: how it was verified, with the evidence.
 - **Reviewed**: "yes" means an independent reviewer (a separate reviewer with
   no part in writing the code) examined it on 2026-10-10. "fix" means it was
-  changed in response to a review. There were two reviews: the first of the
-  whole branch, the second of the fixes for the first. The fixes for the
-  second review are covered by new tests and have **not** been reviewed again
-  (section 3).
+  changed in response to a review. There were three reviews: the first of
+  the whole branch (2026-10-10), the second of the fixes for the first
+  (2026-10-10), the third of the fixes for the second (2026-10-20). The
+  fixes for the third review are covered by new tests, each checked to fail
+  on the code before the fix (section 3).
 
-Test totals at the last run: backend `pytest` 151 passed, 0 skipped, 0 failed
-(including 10 tests on the real models); frontend `npm test` 109 passed;
-`npm run build` passes.
+Test totals at the last run (2026-10-20): backend `pytest -m "not model"` 149
+passed, 0 failed; the 10 tests on the real models were last run on 2026-10-10
+(all passed) and were not rerun, since no model or API code changed and this
+machine is short of memory. Frontend `npm test` 114 passed; `npm run build`
+passes.
 
 Each open item is waiting for exactly one of four things, named in section 4:
 a **remote repository**, a **Docker environment**, an **external backup**, or
@@ -59,7 +62,7 @@ the brief is provided.**
 |---|---|---|---|
 | Three BERT models on both domains | Yes | Test set: aspect F1 0.8462; aspect sentiment accuracy 0.8151, macro-F1 0.7456; end-to-end F1 0.6977; overall macro-F1 0.7202 | yes: published numbers match the report files |
 | Training chain `run_all` | Yes | 20 tests; one full run completed | fix: stale evaluations are detected, a fresh clone can finish, the lock names its owner, the display is kept awake |
-| Promotion `promote` | Yes | 21 tests; all three candidates met the rule on both domains | fix: never deletes a folder that holds more than the placeholder; installs by rename; compares only with models the report describes |
+| Promotion `promote` | Yes | 25 tests; all three candidates met the rule on both domains | fix: never deletes a folder that holds more than the placeholder; installs by rename; compares only with models the report describes; reports repairs; a model in use no longer stops the other slots (exit code 4) |
 | `--limit` trial runs | Yes | `test_limit_cannot_overwrite_published_or_deployed_outputs` | fix: refused on real output paths |
 
 ### 2.3 Evaluation
@@ -83,7 +86,7 @@ the brief is provided.**
 | Error states: backend unreachable, models not loaded, invalid input, server error | Yes | Tests; browser on every page | yes |
 | History: paging, filter, full analysis, delete | Yes | `History.test.tsx`; browser | yes |
 | Dashboard and model performance | Yes | `Dashboard.test.tsx`; browser | yes |
-| Batch: paste or CSV, chunks, progress, cancel, export | Yes | 12 page tests and 30 CSV tests; browser: real file upload of `demo_reviews.csv` (12 reviews), real download of `absa-results.csv` (28 data rows) | fix (both reviews): formula characters neutralised in the export; an uploaded file is read as CSV and typed text as one review per line; continues instead of resending; stops when the page is left |
+| Batch: paste or CSV, chunks, progress, cancel, export | Yes | 17 page tests and 30 CSV tests; browser: real file upload of `demo_reviews.csv` (12 reviews), real download of `absa-results.csv` (28 data rows). The "Read the text as" switch added after the third review has page tests but has not been checked in a browser | fix (all three reviews): formula characters neutralised in the export; a `.csv` upload is read as CSV, a `.txt` upload and typed text one review per line; editing an upload keeps its mode, shown and changeable with a visible switch; continues instead of resending; stops when the page is left |
 | Phone width (390 px) | Yes | Scripted browser check on all five pages: no sideways scrolling, nothing cut off. Found and fixed an overflow on Home, Analyzer and History | not reviewed (reviewer had no browser) |
 | Screenshots | Yes | `docs/screenshots` (11 images) from `frontend/scripts/browser-checks.mjs` | not applicable |
 
@@ -135,9 +138,27 @@ tests:
 | The recovery guide described a repair that did not always happen | "already installed" models are always checked and re-copied if incomplete; guide corrected | `test_candidate_that_is_already_installed_says_so_and_can_be_repaired` |
 | A killed parent's lock could be taken over while its training child still ran | The lock also names the child process | `test_lock_is_respected_while_the_training_child_is_alive` |
 
-**These last fixes have not been reviewed.** The review is therefore not yet
-"satisfactory" in the sense required for merging: a third, short review of
-this last round is the open step.
+**Third review** (2026-10-20, of the fixes for the second review, commit
+`3f9444f`): no critical findings. The 7 findings of the second review were
+judged closed; the reviewer confirmed on this machine that a Windows folder
+rename fails while a model file is open or memory-mapped, so the in-use fix
+holds. It raised 2 important and 6 minor findings. All 8 are fixed except
+the last minor one, which is recorded below:
+
+| Finding | Fix | Test |
+|---|---|---|
+| Important: a `.txt` upload was read as CSV and each review cut at its first comma | `.csv` files are read as CSV, any other file one review per line | `Batch.review3.test.tsx` |
+| Important: editing an uploaded CSV in the box switched it to one-review-per-line, so the header and ids were analysed | The mode changes only when the box is emptied or text goes into an empty box; a visible "Read the text as" switch shows and changes it | `Batch.review3.test.tsx` |
+| Minor: two regression tests of the second review passed on the code before the fix | New tests that fail without the fix: a lock naming two dead processes is taken over; `execute_step` writes the child's id into the lock; `evaluate.main()` refuses `--limit` into `docs/` | `test_lock_naming_two_dead_processes_is_taken_over`, `test_lock_names_the_training_child_while_it_runs`, `test_limit_run_writing_into_docs_is_refused_by_main` |
+| Minor: "needs decision" advised `run_all`, which does not evaluate the installed models while a slot is empty | The advice says to fill the empty slots with `promote --apply` first | `test_unevaluated_model_with_an_empty_slot_says_to_fill_it_first` |
+| Minor: an installed folder without `training_log.json` is never repaired, though the recovery guide said so; a repair was silent | The verdict names the missing log and how to restore it; the guide says so; a repair is logged with where the incomplete copy went | `test_installed_model_without_a_training_log_is_named_as_such`, `test_apply_repairs_an_incomplete_installed_copy_and_says_so` |
+| Minor: `promote --apply` stopped with a traceback when a model was in use | The error is logged per slot, the others are installed, exit code 4 | `test_apply_continues_past_a_model_in_use` |
+| Minor: the DOCX export dropped every level-1 heading of an appendix | Only the first, which repeats the appendix title | `test_appendix_keeps_a_second_top_level_section` |
+
+Each of these tests was run against the code before its fix and failed
+there. The fixes for the third review were not reviewed again; they are
+small and each is pinned by a failing-before test, so the review rounds
+are closed.
 
 Recorded as minor and not fixed:
 
@@ -161,6 +182,10 @@ Recorded as minor and not fixed:
 - The apostrophe that neutralises a formula stays visible in the exported CSV.
 - The report's concluding sentences are fixed text and would not follow
   different numbers after a retrain.
+- `run_all` writes the training child's id into the lock just after starting
+  it, so a kill in that instant leaves a lock naming only the parent; `run`
+  recognises the real step runner by identity rather than by a parameter.
+  Both were judged acceptable by the third review.
 
 ## 4. Pending, by what each item is waiting for
 
@@ -185,8 +210,8 @@ Recorded as minor and not fixed:
 **Awaiting a remote repository**
 
 5. Push the branch; the CI workflow has never run and is not claimed to pass.
-6. Merge `feature/models-evaluation` into `main` after CI has run and the
-   last round of fixes has been reviewed. The branch is intact and unmerged.
+6. Merge `feature/models-evaluation` into `main` after CI has run. The
+   branch is intact and unmerged; the review rounds are closed (section 3).
 
 **Awaiting a Docker environment**
 
@@ -196,8 +221,10 @@ Recorded as minor and not fixed:
 
 **Can be done here, not done yet**
 
-8. A third review, limited to the fixes for the second review.
-9. A person's own read of the DOCX and the slides.
+8. A person's own read of the DOCX and the slides.
+9. A browser check of the Batch page's new "Read the text as" switch, at
+   laptop and phone width (`frontend/scripts/browser-checks.mjs`). It needs
+   the backend running with the models.
 
 ## 5. Known limitations of the result
 

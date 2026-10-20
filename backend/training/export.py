@@ -170,13 +170,15 @@ def write_docx(parts: list[tuple[str, str, Path]], target: Path) -> None:
         if index:
             document.add_paragraph().add_run().add_break(WD_BREAK.PAGE)
         shift = 0
+        title_skipped = False
         if index and title:
             document.add_heading(title, level=1)
             shift = 1  # the appendix's own headings move one level down
         for kind, content in parse_blocks(markdown):
             if kind == "heading":
                 level, text = content
-                if index and level == 1:
+                if index and level == 1 and not title_skipped:
+                    title_skipped = True
                     continue  # the appendix title already says it
                 if index == 0 and level == 1:
                     document.add_heading(_plain(text), level=0)  # document title

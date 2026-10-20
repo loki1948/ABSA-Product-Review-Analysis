@@ -126,3 +126,20 @@ def test_limit_cannot_overwrite_the_published_figures(tmp_path: Path) -> None:
     with pytest.raises(SystemExit, match="--limit"):
         refuse_limited_default(32, (DOCS_DIR / "try.md").parent, DOCS_DIR, "--markdown")
     refuse_limited_default(32, (tmp_path / "try.md").parent, DOCS_DIR, "--markdown")
+
+
+def test_limit_run_writing_into_docs_is_refused_by_main(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Third review: the guard must be in main(), not only in the helper."""
+    import sys
+
+    from training import evaluate
+
+    monkeypatch.setattr(sys, "argv", [
+        "evaluate", "--limit", "32", "--report", str(tmp_path / "report.json"),
+        "--markdown", str(DOCS_DIR / "try.md"),
+    ])
+    with pytest.raises(SystemExit, match="--limit"):
+        evaluate.main()
+    assert not (DOCS_DIR / "try.md").exists()

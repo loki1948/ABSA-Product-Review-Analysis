@@ -122,3 +122,14 @@ def test_screenshots_follow_the_system_slide(tmp_path: Path) -> None:
     write_pptx(deck, target, tmp_path, pictures=[("Application: analyzer", picture)])
     titles = [slide.shapes.title.text for slide in Presentation(str(target)).slides]
     assert titles == ["Title", "System", "Application: analyzer", "Results"]
+
+
+def test_appendix_keeps_a_second_top_level_section(tmp_path: Path) -> None:
+    """Third review: only the appendix's own title is dropped, not every level-1 heading."""
+    import docx
+
+    target = tmp_path / "report.docx"
+    appendix = "# Evaluation results\n\nbody\n\n# Notes\n\nmore\n"
+    write_docx([("", "# Report\n\ntext\n", tmp_path), ("Appendix A: Results", appendix, tmp_path)], target)
+    headings = [p.text for p in docx.Document(str(target)).paragraphs if p.style.name.startswith(("Heading", "Title"))]
+    assert headings == ["Report", "Appendix A: Results", "Notes"]

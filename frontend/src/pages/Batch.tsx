@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 
 import SentimentBadge from "../components/SentimentBadge";
 import StateMessage from "../components/StateMessage";
-import { MAX_BATCH_FILE_REVIEWS, parseReviews, toCsv, type ReviewSource } from "../lib/csv";
+import { MAX_BATCH_FILE_REVIEWS, parseReviews, sourceForFile, toCsv, type ReviewSource } from "../lib/csv";
 import { describeError, type ErrorDescription } from "../lib/errors";
 import { badgeClass, sentimentLabel } from "../lib/sentiment";
 import { analyzeReviews } from "../services/api";
@@ -24,7 +24,8 @@ function download(filename: string, text: string) {
 
 export default function Batch() {
   const [text, setText] = useState("");
-  // An uploaded file is read as CSV; text typed or edited in the box is one review per line.
+  // A .csv upload is read as CSV; typed text and .txt files are one review per line.
+  // Editing an uploaded file keeps its mode; the radio buttons show and change it.
   const [source, setSource] = useState<ReviewSource>("paste");
   const [save, setSave] = useState(true);
   const [status, setStatus] = useState<Status>("idle");
@@ -59,7 +60,7 @@ export default function Batch() {
     const file = event.target.files?.[0];
     if (file) {
       setText(await file.text());
-      setSource("file");
+      setSource(sourceForFile(file));
     }
     event.target.value = ""; // choosing the same file again must fire again
   }
@@ -125,19 +126,45 @@ export default function Batch() {
             className="sr-only"
           />
           <span className="text-xs text-slate-500">
-            A file is read as CSV: the column named <code>review</code> or <code>text</code>, or
-            the first column. At most {MAX_BATCH_FILE_REVIEWS} reviews.
+            A .csv file is read as CSV: the column named <code>review</code> or <code>text</code>,
+            or the first column. A .txt file is one review per line. At most{" "}
+            {MAX_BATCH_FILE_REVIEWS} reviews.
           </span>
         </div>
+        <fieldset className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm" disabled={running}>
+          <legend className="sr-only">How the text is read</legend>
+          <span className="text-slate-600">Read the text as:</span>
+          <label className="flex min-h-11 items-center gap-1.5">
+            <input
+              type="radio"
+              name="batch-source"
+              checked={source === "paste"}
+              onChange={() => setSource("paste")}
+            />
+            one review per line
+          </label>
+          <label className="flex min-h-11 items-center gap-1.5">
+            <input
+              type="radio"
+              name="batch-source"
+              checked={source === "file"}
+              onChange={() => setSource("file")}
+            />
+            CSV
+          </label>
+        </fieldset>
         <label htmlFor="batch-text" className="block text-sm font-medium">
-          Reviews, one review per line
+          Reviews
         </label>
         <textarea
           id="batch-text"
           value={text}
           onChange={(event) => {
-            setText(event.target.value);
-            setSource("paste");
+            const value = event.target.value;
+            // Text typed into an empty box is one review per line; editing an
+            // uploaded CSV must not silently change how the rest is read.
+            if (value.trim() === "" || text.trim() === "") setSource("paste");
+            setText(value);
           }}
           rows={8}
           disabled={running}
