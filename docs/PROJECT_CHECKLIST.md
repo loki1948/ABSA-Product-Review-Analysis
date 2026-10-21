@@ -86,7 +86,7 @@ the brief is provided.**
 | Error states: backend unreachable, models not loaded, invalid input, server error | Yes | Tests; browser on every page | yes |
 | History: paging, filter, full analysis, delete | Yes | `History.test.tsx`; browser | yes |
 | Dashboard and model performance | Yes | `Dashboard.test.tsx`; browser | yes |
-| Batch: paste or CSV, chunks, progress, cancel, export | Yes | 17 page tests and 30 CSV tests; browser: real file upload of `demo_reviews.csv` (12 reviews), real download of `absa-results.csv` (28 data rows). The "Read the text as" switch added after the third review has page tests but has not been checked in a browser | fix (all three reviews): formula characters neutralised in the export; a `.csv` upload is read as CSV, a `.txt` upload and typed text one review per line; editing an upload keeps its mode, shown and changeable with a visible switch; continues instead of resending; stops when the page is left |
+| Batch: paste or CSV, chunks, progress, cancel, export | Yes | 17 page tests and 30 CSV tests; browser: real file upload of `demo_reviews.csv` (12 reviews), real download of `absa-results.csv` (28 data rows). The "Read the text as" switch added after the third review: page tests, and a browser check on 2026-10-21 at 1366 px and 390 px (upload sets the mode, editing keeps it, mouse, arrow keys and tap switch it, locked during a run, 44 px tap targets, no sideways scrolling) | fix (all three reviews): formula characters neutralised in the export; a `.csv` upload is read as CSV, a `.txt` upload and typed text one review per line; editing an upload keeps its mode, shown and changeable with a visible switch; continues instead of resending; stops when the page is left |
 | Phone width (390 px) | Yes | Scripted browser check on all five pages: no sideways scrolling, nothing cut off. Found and fixed an overflow on Home, Analyzer and History | not reviewed (reviewer had no browser) |
 | Screenshots | Yes | `docs/screenshots` (11 images) from `frontend/scripts/browser-checks.mjs` | not applicable |
 
@@ -222,9 +222,9 @@ Recorded as minor and not fixed:
 **Can be done here, not done yet**
 
 8. A person's own read of the DOCX and the slides.
-9. A browser check of the Batch page's new "Read the text as" switch, at
-   laptop and phone width (`frontend/scripts/browser-checks.mjs`). It needs
-   the backend running with the models.
+9. Done 2026-10-21: browser check of the Batch page's "Read the text as"
+   switch at 1366 px and 390 px, with the backend and models running. All
+   steps passed; the only console error was the missing `/favicon.ico` (404).
 
 ## 5. Known limitations of the result
 
