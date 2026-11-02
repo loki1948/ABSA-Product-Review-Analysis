@@ -144,6 +144,26 @@ python -m training.error_analysis     # docs/error_analysis.md, docs/transfer.md
 python -m training.report             # docs/report.md, docs/slides.md
 ```
 
+### Quick start: one command
+
+After steps 1 and 2, from the project folder:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\start_app.ps1
+```
+
+This frees ports 8000 and 5173 from any earlier run, starts the backend in its
+own window, waits until `/api/health` reports the models loaded, then starts the
+frontend in a second window and opens http://localhost:5173. To stop, close both
+windows or run `powershell -ExecutionPolicy Bypass -File scripts\stop_app.ps1`.
+Sections 4 and 5 below are the manual equivalent.
+
+Windows PowerShell 5.1 shows anything written to stderr as `NativeCommandError`
+when the output is redirected (for example `2>&1` or `| Tee-Object`). Uvicorn
+writes its normal `INFO` lines to stderr, so they look like errors there even
+though they are not. The script runs each server under `cmd.exe`, which avoids
+this.
+
 ### 4. Run the backend
 
 ```powershell

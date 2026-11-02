@@ -4,6 +4,12 @@
 |---|---|
 | `ABSA_Project_Report.docx` / `.pdf` | The project report with appendices: full results, baseline comparison, error analysis, transfer study |
 | `ABSA_Presentation.pptx` / `.pdf` | The presentation, 18 slides including four screenshots |
+| `ABSA_Project_Report_Template.docx` | The report in the course's 17-section template (abstract to member contribution), with literature review, diagrams, test cases and IEEE references |
+
+The template report is built from `docs/report_site/` (an HTML page with the same
+content): run `python docs/report_site/build.py`, then `python docs/report_site/to_docx.py`,
+then `powershell -ExecutionPolicy Bypass -File docs\report_site\update_toc.ps1` to fill in
+the table of contents. Diagrams and training curves come from `scripts/make_report_figures.py`.
 
 These are built from `docs/report.md` and `docs/slides.md`, which are
 themselves generated from the evaluation outputs. Do not edit the files in this

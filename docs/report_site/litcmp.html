@@ -1,0 +1,16 @@
+<div class="table-wrap"><table>
+<caption>TABLE XVIII. Aspect sentiment (gold aspects) compared with published results on SemEval-2014</caption>
+<thead><tr><th>System</th><th>Encoder</th><th class="n">Lap14 Acc / MF1</th><th class="n">Rest14 Acc / MF1</th></tr></thead>
+<tbody>
+<tr><td>Vanilla BERT, Xu et al. {{c:xu2019}}</td><td>BERT-base</td><td class="n">75.29 / 71.91</td><td class="n">81.54 / 71.94</td></tr>
+<tr><td>Fine-tuned BERT, reported by Wang et al. {{c:wang2023}}</td><td>BERT-base</td><td class="n">77.85 / 73.20</td><td class="n">83.94 / 75.28</td></tr>
+<tr><td>BERT sentence-pair baseline, reported by Tian et al. {{c:tian2021}}</td><td>BERT-base</td><td class="n">78.68 / 74.64</td><td class="n">84.55 / 77.34</td></tr>
+<tr class="hl"><td>This project (deployed)</td><td>BERT-base</td><td class="n">77.43 / 73.22</td><td class="n">83.84 / 75.28</td></tr>
+<tr><td>ChatGPT zero-shot, Wang et al. {{c:wang2023}}</td><td>LLM, prompted</td><td class="n">76.42 / 66.79</td><td class="n">83.85 / 70.57</td></tr>
+<tr><td>DualGCN + BERT, Li et al. {{c:li2021}}</td><td>BERT-base + GCN</td><td class="n">81.80 / 78.10</td><td class="n">87.13 / 81.16</td></tr>
+<tr><td>RoBERTa-MLP, Dai et al. {{c:dai2021}}</td><td>RoBERTa-base</td><td class="n">83.78 / 80.73</td><td class="n">87.37 / 80.96</td></tr>
+</tbody></table></div>
+<div class="prose">
+<p>The project's sentiment classifier lands where a plain BERT-base sentence-pair model is expected to land: within about one point of the BERT-base baselines reported by Wang et al. and Tian et al., and above the vanilla BERT of Xu et al. It beats zero-shot ChatGPT on macro-F1 by 6.4 (laptops) and 4.7 (restaurants) points while running locally. The best published systems are 4 to 6 accuracy points higher; they gain that from a stronger encoder (RoBERTa), syntax graphs, review-domain post-training or a larger model, all of which are natural upgrades for this pipeline. Note that the project trains one model on both domains, while most papers train one per domain.</p>
+<p>For aspect extraction, the laptop F1 of 0.802 is close to the 79.28 that Xu et al. {{c:xu2019}} report for vanilla BERT on the same laptop test set, and below their review-post-trained BERT (84.26). Yan et al. {{c:yan2021}} report extraction F1 83.52 (laptops) and 87.07 (restaurants) against 80.21 and 87.15 here, but on a re-annotated version of the data, so the comparison is indicative only. The end-to-end F1 of 0.631 (laptops) and 0.736 (restaurants) is on the scale of the unified scores reported by Zhang et al. {{c:zhang2021gas}} (68.64 and 76.58), again with differences in data versions and scoring.</p>
+</div>

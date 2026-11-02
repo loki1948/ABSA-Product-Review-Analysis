@@ -42,3 +42,6 @@ absa-models.zip.sha256
 *.incoming/
 absa-history.zip
 absa-history.zip.sha256
+
+# Word lock files
+~$*

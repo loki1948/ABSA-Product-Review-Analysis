@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ABSA Project Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Layout idea: an academic report read top to bottom; a sticky contents rail on wide screens, one 70ch text column, tables and figures allowed to run wider. */
+  --paper: #fbfbf9;
+  --ink: #1d232b;
+  --muted: #5b6573;
+  --rule: #d9dde3;
+  --accent: #1f4f8a;
+  --tint: #eef3fa;
+  --good: #1e7a46;
+  --bad: #b3261e;
+  --warn: #8a5a00;
+  --fill-bg: #fff3d6;
+  --font-display: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --font-mono: "IBM Plex Mono", Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #14181e; --ink: #e3e7ec; --muted: #9aa4b1; --rule: #2e3540;
+    --accent: #8cb6ee; --tint: #1b2533; --good: #6fcf97; --bad: #f28b82; --warn: #e8b85a; --fill-bg: #3a2f14;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #14181e; --ink: #e3e7ec; --muted: #9aa4b1; --rule: #2e3540;
+  --accent: #8cb6ee; --tint: #1b2533; --good: #6fcf97; --bad: #f28b82; --warn: #e8b85a; --fill-bg: #3a2f14;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--font-body); font-size: 17px; line-height: 1.6; }
+.layout { display: grid; grid-template-columns: 1fr; gap: 32px; max-width: 1240px; margin: 0 auto; padding: 24px 20px 80px; }
+@media (min-width: 1100px) { .layout { grid-template-columns: 250px minmax(0, 1fr); } }
+nav.toc { font-family: var(--font-display); font-size: 13.5px; line-height: 1.45; }
+@media (min-width: 1100px) { nav.toc { position: sticky; top: 20px; align-self: start; max-height: calc(100vh - 40px); overflow-y: auto; } }
+nav.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+nav.toc a { color: var(--muted); text-decoration: none; display: block; padding: 3px 8px; border-left: 2px solid transparent; }
+nav.toc a:hover, nav.toc a:focus-visible { color: var(--accent); border-left-color: var(--accent); outline: none; }
+nav.toc .toc-title { font-weight: 600; text-transform: uppercase; letter-spacing: .06em; font-size: 12px; color: var(--muted); margin: 0 0 8px 8px; }
+main { min-width: 0; }
+main > section, header.cover { max-width: 860px; }
+.prose { max-width: 70ch; }
+h1, h2, h3, h4 { font-family: var(--font-display); text-wrap: balance; line-height: 1.25; color: var(--ink); }
+h2 { font-size: 26px; margin: 56px 0 14px; padding-top: 14px; border-top: 1px solid var(--rule); }
+h2 .num { color: var(--accent); margin-right: 10px; font-variant-numeric: tabular-nums; }
+h3 { font-size: 19px; margin: 32px 0 8px; }
+h4 { font-size: 16px; margin: 22px 0 6px; }
+p { margin: 0 0 14px; }
+a { color: var(--accent); }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+header.cover { border: 1px solid var(--rule); border-radius: 6px; padding: 36px 32px; background: var(--tint); }
+header.cover .kicker { font-family: var(--font-display); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
+header.cover h1 { font-size: clamp(26px, 3.4vw, 36px); margin: 0 0 18px; }
+.cover-grid { display: grid; grid-template-columns: max-content 1fr; gap: 6px 18px; font-family: var(--font-display); font-size: 14.5px; }
+.cover-grid dt { color: var(--muted); }
+.cover-grid dd { margin: 0; }
+.fill { background: var(--fill-bg); color: var(--warn); font-family: var(--font-display); font-size: .82em; padding: 1px 7px; border-radius: 3px; white-space: nowrap; border: 1px dashed var(--warn); }
+.keywords { font-family: var(--font-display); font-size: 14.5px; }
+.keywords b { color: var(--muted); font-weight: 600; }
+.table-wrap { overflow-x: auto; margin: 6px 0 22px; }
+table { border-collapse: collapse; font-family: var(--font-display); font-size: 14px; line-height: 1.4; min-width: 100%; }
+caption { caption-side: top; text-align: center; font-weight: 600; font-size: 13.5px; padding-bottom: 8px; color: var(--ink); letter-spacing: .02em; }
+th, td { border: 1px solid var(--rule); padding: 6px 9px; text-align: left; vertical-align: top; }
+th { background: var(--tint); font-weight: 600; }
+td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+tr.hl td { background: color-mix(in srgb, var(--accent) 9%, transparent); font-weight: 600; }
+.pass { color: var(--good); font-weight: 600; white-space: nowrap; }
+.fail { color: var(--bad); font-weight: 600; white-space: nowrap; }
+.part { color: var(--warn); font-weight: 600; white-space: nowrap; }
+figure { margin: 22px 0 26px; }
+figure img { max-width: 100%; height: auto; display: block; margin: 0 auto; border: 1px solid var(--rule); border-radius: 4px; background: #fff; }
+figure.phone img { max-width: 300px; }
+figcaption { text-align: center; font-family: var(--font-display); font-size: 13.5px; color: var(--muted); margin-top: 8px; }
+figcaption b { color: var(--ink); }
+.eq { font-family: "Cambria Math", "STIX Two Math", var(--font-body); font-style: italic; text-align: center; margin: 12px 0 16px; overflow-x: auto; white-space: nowrap; }
+.eq .no { float: right; font-style: normal; color: var(--muted); }
+pre { background: var(--tint); border: 1px solid var(--rule); border-radius: 4px; padding: 12px 14px; overflow-x: auto; font-family: var(--font-mono); font-size: 13px; line-height: 1.5; }
+code { font-family: var(--font-mono); font-size: .88em; }
+.listing { font-family: var(--font-display); font-size: 13px; color: var(--muted); margin: 0 0 4px; }
+ol.refs { font-size: 15px; padding-left: 0; list-style: none; counter-reset: none; }
+ol.refs li { display: grid; grid-template-columns: 44px 1fr; margin-bottom: 8px; }
+ol.refs .rn { color: var(--muted); font-variant-numeric: tabular-nums; }
+.cite { white-space: nowrap; }
+.note { border-left: 3px solid var(--accent); background: var(--tint); padding: 10px 14px; font-size: 15.5px; margin: 0 0 16px; max-width: 70ch; }
+ul.check { list-style: none; padding: 0; font-family: var(--font-display); font-size: 14.5px; display: grid; gap: 6px; }
+ul.check li { display: grid; grid-template-columns: 28px 1fr; }
+.box { font-weight: 700; }
+.box.y { color: var(--good); } .box.n { color: var(--warn); }
+@media (max-width: 520px) { body { font-size: 16px; } header.cover { padding: 24px 18px; } h2 { font-size: 22px; } }
+</style>
+</head>
+<body>
+<div class="layout">
+<nav class="toc" aria-label="Contents">
+  <p class="toc-title">Contents</p>
+  <ol>
+    <li><a href="#abstract">1. Abstract and keywords</a></li>
+    <li><a href="#introduction">2. Introduction</a></li>
+    <li><a href="#literature">3. Literature review</a></li>
+    <li><a href="#requirements">4. System requirements</a></li>
+    <li><a href="#dataset">5. Dataset description</a></li>
+    <li><a href="#methodology">6. Proposed methodology</a></li>
+    <li><a href="#design">7. System design</a></li>
+    <li><a href="#implementation">8. Implementation</a></li>
+    <li><a href="#setup">9. Experimental setup</a></li>
+    <li><a href="#results">10. Results and discussion</a></li>
+    <li><a href="#ui">11. User interface</a></li>
+    <li><a href="#testing">12. Testing</a></li>
+    <li><a href="#deployment">13. Deployment and user guide</a></li>
+    <li><a href="#limitations">14. Limitations and ethics</a></li>
+    <li><a href="#conclusion">15. Conclusion and future work</a></li>
+    <li><a href="#references">16. References</a></li>
+    <li><a href="#artefacts">17. Artefacts and contribution</a></li>
+    <li><a href="#checklist">Submission checklist</a></li>
+  </ol>
+</nav>
+<main>
+
+<header class="cover">
+  <p class="kicker">Project report</p>
+  <h1>Aspect-Based Sentiment Analysis for Automated Product Review Analysis Using Natural Language Processing</h1>
+  <dl class="cover-grid">
+    <dt>Course</dt><dd><span class="fill">Course name and code</span></dd>
+    <dt>Team</dt><dd><span class="fill">Member names and register numbers (Section 17)</span></dd>
+    <dt>Supervisor</dt><dd><span class="fill">Supervisor name</span></dd>
+    <dt>Institution</dt><dd><span class="fill">Department, institution</span></dd>
+    <dt>Date</dt><dd>November 2026</dd>
+  </dl>
+</header>
+
+<section id="abstract">
+<h2><span class="num">1</span>Abstract and keywords</h2>
+<div class="prose">
+<p>A single positive or negative label hides what a product review actually says, because most reviews praise some features of a product and criticise others. Aspect-based sentiment analysis addresses this by finding each product feature mentioned in a review and deciding the sentiment expressed towards it. This project built an end-to-end aspect-based sentiment analysis system for English product reviews. Two Bidirectional Encoder Representations from Transformers (BERT) models were fine-tuned on the SemEval-2014 Task 4 laptop and restaurant benchmark: a token classifier that tagged aspect terms and a sentence-pair classifier that judged the sentiment towards one aspect at a time, while a third BERT classifier gave the traditional single label for comparison. The models were served through a web programming interface and a browser application for single reviews, batch files, a review history and a dashboard. On the official test sets the system reached an aspect-extraction F1 of 0.846, an aspect-sentiment accuracy of 0.815 with a macro-F1 of 0.746, and an end-to-end F1 of 0.698, against 0.377, 0.663, 0.616 and 0.253 for a rule-and-lexicon baseline. The work gives sellers and analysts a feature-level summary of customer opinion that runs on an ordinary laptop without a graphics processor.</p>
+<p class="keywords"><b>Keywords:</b> Aspect-Based Sentiment Analysis, BERT, Aspect Term Extraction, Transformer, Product Reviews, SemEval-2014</p>
+</div>
+</section>
+
+<section id="introduction">
+<h2><span class="num">2</span>Introduction</h2>
+<div class="prose">
+<p>Online reviews have become one of the main inputs to a purchase decision and one of the main sources of feedback for the people who sell and build products. {{INTROSTAT}} A popular product collects thousands of reviews, far more than anyone can read, so sellers depend on automatic analysis to learn what customers like and dislike.</p>
+<p>Conventional sentiment analysis answers that need poorly. It assigns one label to a whole review, but the sentence "The screen is gorgeous but the battery life is terrible" is neither positive nor negative: it is positive about the screen and negative about the battery. A seller who sees only "negative" does not know which part of the product to fix. Aspect-based sentiment analysis (ABSA) produces the missing breakdown {{c:pontiki2014}}, {{c:zhang2022survey}}.</p>
+<p><b>Problem statement.</b> The input is an English review of any length up to 5,000 characters. The output is the list of aspect terms the review mentions, each with its character position, its sentiment (positive, negative or neutral) and a confidence score, plus the overall sentiment of the review. Lexicon tools such as opinion-word counting cannot tell which opinion belongs to which feature and miss aspects that are not ordinary nouns, while a sentence-level classifier ignores the aspect altogether; Section 10 measures both failures on the same test data.</p>
+<p><b>Objectives.</b> The project set four measurable objectives:</p>
+<ol>
+<li>Reach an aspect-extraction F1 above 0.80 (exact span match) on the SemEval-2014 Task 4 test sets.</li>
+<li>Reach an aspect-sentiment accuracy above 0.80 and a macro-F1 above 0.70 on the same test sets.</li>
+<li>Improve end-to-end F1 by at least 0.20 over a rule-and-lexicon baseline scored by the same code.</li>
+<li>Return the analysis of a typical review (under 300 characters) in less than 3 seconds on a CPU-only laptop, through a web application.</li>
+</ol>
+<p><b>Contributions.</b></p>
+<ol>
+<li>A reproducible data pipeline with a leakage check that found and removed two training sentences that also occur in the official test set and 29 duplicated training sentences, so that no sentence is shared between splits.</li>
+<li>A two-model sentiment design (aspect-aware and sentence-level) evaluated separately on sentences whose aspects share one sentiment and on sentences that mix sentiments, together with an aspect-agnostic BERT baseline that shows where aspect awareness matters (accuracy 0.662 against 0.486 on mixed sentences).</li>
+<li>A complete application that runs on a CPU-only laptop: a FastAPI service and a React interface with single and batch analysis, CSV export, history, dashboard and a model-metrics view, covered by 149 backend and 114 frontend automated tests.</li>
+<li>A documented error analysis of 40 misclassified aspects grouped by cause and a measured cross-domain transfer study (a laptop-only extractor reached F1 0.370 on restaurant reviews against 0.872 for the model trained on both domains).</li>
+</ol>
+<p><b>Organisation.</b> Section 3 reviews related work. Sections 4 and 5 state the requirements and describe the dataset. Section 6 presents the method and Sections 7 and 8 the design and implementation of the system. Section 9 describes the experimental setup and Section 10 the results, including error analysis. Sections 11 to 13 cover the interface, testing and deployment. Section 14 discusses limitations and ethics and Section 15 concludes.</p>
+</div>
+</section>
+
+<section id="literature">
+<h2><span class="num">3</span>Literature review</h2>
+{{LIT}}
+</section>
+
+<section id="requirements">
+<h2><span class="num">4</span>System requirements</h2>
+<div class="table-wrap"><table>
+<caption>TABLE II. System requirements</caption>
+<thead><tr><th>ID</th><th>Requirement</th><th>Type</th></tr></thead>
+<tbody>
+<tr><td>R1</td><td>The system accepts an English review of 1 to 5,000 characters and returns every aspect term it mentions with character offsets, sentiment (positive, negative, neutral) and confidence.</td><td>Functional</td></tr>
+<tr><td>R2</td><td>The system returns the overall sentiment of the review next to the aspect results, so that both views can be compared.</td><td>Functional</td></tr>
+<tr><td>R3</td><td>The system analyses a batch of up to 50 reviews per request, pasted or uploaded as a CSV or text file, and exports the results as CSV.</td><td>Functional</td></tr>
+<tr><td>R4</td><td>Every analysis can be stored; the user can list, filter, open and delete stored analyses.</td><td>Functional</td></tr>
+<tr><td>R5</td><td>A dashboard shows aggregate sentiment distributions, the most frequent aspects and the models' test-set metrics.</td><td>Functional</td></tr>
+<tr><td>R6</td><td>Empty, blank or over-long input is rejected with a clear message and no server error.</td><td>Functional</td></tr>
+<tr><td>R7</td><td>Aspects are learnt from annotated data; there is no hard-coded aspect list and no external sentiment service.</td><td>Non-functional (design)</td></tr>
+<tr><td>R8</td><td>Response time under 3 seconds for a typical review (under 300 characters) on a CPU-only laptop once the models are loaded.</td><td>Non-functional (performance)</td></tr>
+<tr><td>R9</td><td>The service starts without the trained models and reports a degraded state instead of failing, so history and statistics stay available.</td><td>Non-functional (reliability)</td></tr>
+<tr><td>R10</td><td>Training and evaluation are reproducible from scripts with a fixed random seed (42); reported numbers are regenerated from the evaluation outputs.</td><td>Non-functional (reproducibility)</td></tr>
+<tr><td>R11</td><td>The interface works with keyboard only and on a 390-pixel-wide phone screen without sideways scrolling.</td><td>Non-functional (usability)</td></tr>
+</tbody></table></div>
+</section>
+
+<section id="dataset">
+<h2><span class="num">5</span>Dataset description</h2>
+<div class="prose">
+<p><b>Name and source.</b> SemEval-2014 Task 4: Aspect Based Sentiment Analysis {{c:pontiki2014}}, task page <a href="https://alt.qcri.org/semeval2014/task4/">alt.qcri.org/semeval2014/task4</a>. The preparation script downloads the four original XML files (laptop and restaurant training data, laptop and restaurant gold test data) from a public mirror of the official release. <b>Language:</b> English. <b>Licence:</b> the organisers distribute the data for research use; this project uses it for academic research only, cites the task paper, and does not commit the files to its repository (they are downloaded by script).</p>
+<p><b>Content.</b> Individual review sentences, each annotated by people with its aspect terms, their character offsets and their polarity (positive, negative, neutral or conflict). Sentences without any aspect term are included, which teaches the extractor when to find nothing.</p>
+<p><b>Split.</b> The official training data was split 90/10 per domain into training and validation sets with a fixed seed (42); the official gold test set is used unchanged. The script validates offsets and labels and removes training sentences that are duplicates (29) or that also occur in the test set (2). Aspects labelled conflict (126 training terms) are kept for extraction and excluded from sentiment classification, the usual three-class setting.</p>
+</div>
+<div class="table-wrap"><table>
+<caption>TABLE III. Sentences and aspect terms per split</caption>
+<thead><tr><th>Split</th><th>Domain</th><th class="n">Sentences</th><th class="n">With aspects</th><th class="n">Aspect terms</th><th class="n">Avg. tokens</th></tr></thead>
+<tbody>
+<tr><td>Train</td><td>Laptops</td><td class="n">2,723</td><td class="n">1,330</td><td class="n">2,131</td><td class="n">17.1</td></tr>
+<tr><td>Train</td><td>Restaurants</td><td class="n">2,726</td><td class="n">1,820</td><td class="n">3,322</td><td class="n">16.0</td></tr>
+<tr><td>Validation</td><td>Laptops</td><td class="n">303</td><td class="n">148</td><td class="n">210</td><td class="n">18.0</td></tr>
+<tr><td>Validation</td><td>Restaurants</td><td class="n">303</td><td class="n">198</td><td class="n">367</td><td class="n">16.0</td></tr>
+<tr><td>Test (official)</td><td>Laptops</td><td class="n">800</td><td class="n">422</td><td class="n">654</td><td class="n">15.2</td></tr>
+<tr><td>Test (official)</td><td>Restaurants</td><td class="n">800</td><td class="n">606</td><td class="n">1,134</td><td class="n">16.3</td></tr>
+<tr class="hl"><td colspan="2">Total</td><td class="n">7,655</td><td class="n">4,524</td><td class="n">7,818</td><td class="n"></td></tr>
+</tbody></table></div>
+<div class="table-wrap"><table>
+<caption>TABLE IV. Class distribution of aspect polarity</caption>
+<thead><tr><th>Split</th><th class="n">Positive</th><th class="n">Negative</th><th class="n">Neutral</th><th class="n">Conflict (excluded)</th></tr></thead>
+<tbody>
+<tr><td>Train (both domains)</td><td class="n">2,831 (51.9%)</td><td class="n">1,507 (27.6%)</td><td class="n">989 (18.1%)</td><td class="n">126 (2.3%)</td></tr>
+<tr><td>Validation</td><td class="n">310 (53.7%)</td><td class="n">155 (26.9%)</td><td class="n">102 (17.7%)</td><td class="n">10 (1.7%)</td></tr>
+<tr><td>Test, laptops</td><td class="n">341 (52.1%)</td><td class="n">128 (19.6%)</td><td class="n">169 (25.8%)</td><td class="n">16 (2.4%)</td></tr>
+<tr><td>Test, restaurants</td><td class="n">728 (64.2%)</td><td class="n">196 (17.3%)</td><td class="n">196 (17.3%)</td><td class="n">14 (1.2%)</td></tr>
+<tr><td>Test, both</td><td class="n">1,069 (59.8%)</td><td class="n">324 (18.1%)</td><td class="n">365 (20.4%)</td><td class="n">30 (1.7%)</td></tr>
+</tbody></table></div>
+<div class="prose"><p>Positive is the largest class in every split, which is why macro-F1 is reported next to accuracy throughout. Sample records from the prepared training data:</p></div>
+<div class="table-wrap"><table>
+<caption>TABLE V. Sample records with their labels</caption>
+<thead><tr><th>ID</th><th>Sentence</th><th>Aspect terms and polarity</th></tr></thead>
+<tbody>
+<tr><td>laptops:444</td><td>Keyboard is great but primary and secondary control buttons could be more durable.</td><td>Keyboard: positive; control buttons: negative</td></tr>
+<tr><td>restaurants:1077</td><td>A cheap eat for NYC, but not for dosa.</td><td>eat: positive; dosa: negative</td></tr>
+<tr><td>restaurants:2783</td><td>This is a consistently great place to dine for lunch or dinner.</td><td>dine: positive; lunch: neutral; dinner: neutral</td></tr>
+<tr><td>laptops:2289</td><td>It's the inside that is truly wonderful.</td><td>none (no explicit aspect term)</td></tr>
+</tbody></table></div>
+<div class="prose"><p>Each prepared sentence also carries word tokens and BIO tags, for example "Most everything is fine with this machine: speed, capacity, build." is tagged <code>O O O O O O O O B-ASPECT O B-ASPECT O B-ASPECT O</code>. No new data was annotated in this project, so no inter-annotator agreement is reported.</p></div>
+</section>
+
+<section id="methodology">
+<h2><span class="num">6</span>Proposed methodology</h2>
+<h3>6.1 Architecture</h3>
+<div class="prose"><p>The method is a two-stage pipeline. Stage 1 finds aspect terms by labelling every word; stage 2 classifies the sentiment of each found aspect given the whole sentence. A third model classifies the sentence without an aspect and stands for traditional sentiment analysis. Fig. 1 shows the blocks; the same preprocessing code and model wrappers are used in training, evaluation and the running application, so the reported metrics describe the deployed code path.</p></div>
+<figure><img src="img/fig_architecture.png" alt="Layered architecture: browser pages, API client, FastAPI routes, NLP pipeline of preprocessing, aspect extraction, aspect sentiment and overall sentiment, SQLite and model storage, offline training chain" loading="lazy"><figcaption><b>Fig. 1.</b> System architecture with every block labelled.</figcaption></figure>
+<h3>6.2 Text preprocessing</h3>
+<div class="prose">
+<p>Preprocessing runs in a fixed order. Cleaning applies Unicode NFKC normalisation, removes HTML tags, HTML entities and control characters, and collapses whitespace without changing the words. The review is then split into sentences with the NLTK Punkt model, because the models were trained on single sentences. Each sentence is tokenised into words and single punctuation marks, and every token keeps its character offsets so that predictions can be mapped back to the original text for highlighting. Lowercasing is left to the uncased BERT tokenizer, which then splits words into WordPiece subwords ("touchpad" becomes "touch" and "##pad").</p>
+<p>Stop words are deliberately kept and nothing is stemmed: a contextual model needs words such as "not" and "but", and removing them turns "not good" into "good". WordNet lemmatisation is used only to group aspects in the statistics, so that "batteries" and "battery" are counted together. The reviews are English only; no script conversion or transliteration is applied, and Section 12 records how code-mixed and non-English input behaves.</p>
+<p>For training, the annotated character spans become one BIO tag per word (<code>B-ASPECT</code> begins an aspect, <code>I-ASPECT</code> continues it, <code>O</code> is everything else). Because BERT may split one word into several pieces, the first piece of each word carries the word's label and the remaining pieces and special tokens get the ignore index −100, so the loss is computed once per word.</p>
+</div>
+<pre>words  : The  battery   life      is great but the screen    is dim .
+tags   : O    B-ASPECT  I-ASPECT  O  O     O   O   B-ASPECT  O  O   O
+pieces : [CLS] the touch    ##pad is great [SEP]
+labels : -100  O   B-ASPECT -100  O  O     -100</pre>
+<h3>6.3 Text representation</h3>
+<div class="prose"><p>All three models use contextual embeddings from the pretrained <code>bert-base-uncased</code> encoder {{c:devlin2019}}: 12 Transformer layers, hidden size 768, 12 attention heads and about 110 million parameters, with a 30,522-token WordPiece vocabulary. The encoder is fine-tuned end to end. A Transformer encoder was chosen over static embeddings (word2vec, GloVe, fastText) because the polarity of an aspect depends on its context and on words far from it in the sentence.</p></div>
+<h3>6.4 Models</h3>
+<div class="prose">
+<p><b>Aspect extraction (token classification).</b> For a sentence of word-pieces x<sub>1</sub>…x<sub>n</sub>, BERT produces hidden states h<sub>i</sub>; a linear layer maps each to the three BIO classes. The training loss is cross-entropy over the first piece of every word (the set W):</p>
+<p class="eq">p(y<sub>i</sub> | x) = softmax(W<sub>t</sub> h<sub>i</sub> + b<sub>t</sub>),&nbsp;&nbsp; L<sub>ATE</sub> = −(1/|W|) Σ<sub>i∈W</sub> log p(y<sub>i</sub><sup>*</sup> | x) <span class="no">(1)</span></p>
+<p>Consecutive B/I tags are merged into one multi-word aspect, so "battery life" is found as one unit, and its confidence is the mean confidence of its words.</p>
+<p><b>Aspect sentiment (sentence-pair classification).</b> The input is the pair <code>[CLS] sentence [SEP] aspect [SEP]</code>, the auxiliary-sentence formulation that adapts BERT to aspect sentiment {{c:sun2019}}. Self-attention lets the aspect in the second segment attend to the opinion words about it, so one sentence can receive different labels for different aspects. A linear layer on the <code>[CLS]</code> state h<sub>CLS</sub> gives the three polarities c ∈ {negative, neutral, positive}:</p>
+<p class="eq">p(c | s, a) = softmax(W<sub>s</sub> h<sub>CLS</sub>(s, a) + b<sub>s</sub>),&nbsp;&nbsp; ĉ = argmax<sub>c</sub> p(c | s, a),&nbsp;&nbsp; confidence = max<sub>c</sub> p(c | s, a) <span class="no">(2)</span></p>
+<p><b>Overall sentiment (single-sentence classification).</b> The same head on <code>[CLS] sentence [SEP]</code>. SemEval-2014 has no sentence-level labels, so the training label is derived from the aspect polarities (positive when positive aspects outnumber negative ones, negative in the opposite case, neutral on a tie); sentences without aspects are not used. For a review of S sentences the class probabilities are averaged:</p>
+<p class="eq">p(c | review) = (1/S) Σ<sub>k=1..S</sub> p(c | s<sub>k</sub>) <span class="no">(3)</span></p>
+<p>An earlier version trained one classifier on both kinds of input. Training a model to label whole sentences rewards it for ignoring the aspect it is asked about, so the two jobs were given separate models. No large language model is used: all three models are fine-tuned (full fine-tuning, no LoRA, no prompting).</p>
+</div>
+<h3>6.5 Training details</h3>
+<div class="prose"><p>Training uses a plain PyTorch loop with the AdamW optimiser {{c:loshchilov2019}} (weight decay 0.01, none on biases and LayerNorm weights), a learning rate that rises linearly over the first 10% of steps and then decays linearly to zero, gradient clipping at norm 1.0, dynamic padding and length-bucketed batches. After every epoch the model is scored on the validation split (span F1 for extraction, macro-F1 for sentiment) and only the best checkpoint is kept; the test set plays no part in training. The learning-rate factor at step t of T with T<sub>w</sub> warm-up steps is:</p>
+<p class="eq">η(t) = η<sub>0</sub> · t / T<sub>w</sub> for t &lt; T<sub>w</sub>,&nbsp;&nbsp; η(t) = η<sub>0</sub> · (T − t) / (T − T<sub>w</sub>) otherwise <span class="no">(4)</span></p></div>
+<div class="table-wrap"><table>
+<caption>TABLE VI. Hyperparameters of the deployed models</caption>
+<thead><tr><th>Setting</th><th>Aspect extraction</th><th>Aspect sentiment</th><th>Overall sentiment</th></tr></thead>
+<tbody>
+<tr><td>Pretrained encoder</td><td colspan="3">bert-base-uncased</td></tr>
+<tr><td>Training data</td><td>5,449 sentences</td><td>5,327 (sentence, aspect) pairs</td><td>3,088 sentences</td></tr>
+<tr><td>Learning rate</td><td class="n">3e-5</td><td class="n">2e-5</td><td class="n">2e-5</td></tr>
+<tr><td>Batch size</td><td class="n">16</td><td class="n">16</td><td class="n">16</td></tr>
+<tr><td>Epochs (best kept)</td><td class="n">3 (3)</td><td class="n">4 (3)</td><td class="n">4 (4)</td></tr>
+<tr><td>Max sequence length</td><td class="n">128</td><td class="n">128</td><td class="n">128</td></tr>
+<tr><td>Optimiser</td><td colspan="3">AdamW, weight decay 0.01, warm-up 10% then linear decay, gradient clipping 1.0</td></tr>
+<tr><td>Dropout</td><td colspan="3">0.1 (BERT hidden and attention dropout)</td></tr>
+<tr><td>Selection metric</td><td>validation span F1</td><td>validation macro-F1</td><td>validation macro-F1</td></tr>
+<tr><td>Random seed</td><td class="n">42</td><td class="n">42</td><td class="n">42</td></tr>
+<tr><td>Training time (CPU)</td><td class="n">78.6 min</td><td class="n">95.0 min</td><td class="n">37.3 min</td></tr>
+</tbody></table></div>
+</section>
+
+<section id="design">
+<h2><span class="num">7</span>System design</h2>
+<div class="prose"><p>The application has three layers (Fig. 1): a React single-page interface, a FastAPI service with the NLP pipeline, and storage for the review history (SQLite through SQLAlchemy) and the model files. The models are loaded once at start-up, so a request pays only for inference; routes are plain synchronous functions, which FastAPI runs in a thread pool so that CPU-bound inference does not block the server. Fig. 2 traces the data through one analysis, Fig. 3 shows who uses which function, and Fig. 4 shows the order of calls for one request.</p></div>
+<figure><img src="img/fig_dataflow.png" alt="Level-1 data flow diagram from user through validation, preprocessing, aspect extraction, aspect sentiment, overall sentiment, storage and response" loading="lazy"><figcaption><b>Fig. 2.</b> Data flow diagram (level 1) of one analysis request.</figcaption></figure>
+<figure><img src="img/fig_usecase.png" alt="Use case diagram with analyst and developer actors" loading="lazy"><figcaption><b>Fig. 3.</b> Use case diagram.</figcaption></figure>
+<figure><img src="img/fig_sequence.png" alt="Sequence diagram of POST /api/analyze across user, React UI, FastAPI, pipeline, BERT models and SQLite" loading="lazy"><figcaption><b>Fig. 4.</b> Sequence diagram of a single-review analysis.</figcaption></figure>
+<div class="table-wrap"><table>
+<caption>TABLE VII. Modules, functions and interfaces</caption>
+<thead><tr><th>Module</th><th>Function</th><th>Input / Output</th></tr></thead>
+<tbody>
+<tr><td>Data preparation (<code>training/prepare_dataset.py</code>)</td><td>Download, validate, de-duplicate and split SemEval-2014; leakage check</td><td>4 XML files / train, val, test JSONL and CSV, statistics JSON</td></tr>
+<tr><td>Preprocessing (<code>app/nlp/preprocessing.py</code>)</td><td>Clean text, split sentences, tokenise with offsets, BIO conversion, context clause</td><td>Raw review / sentences and tokens with character offsets</td></tr>
+<tr><td>Aspect extraction (<code>app/nlp/aspect_extraction.py</code>, <code>app/models/aspect_model.py</code>)</td><td>BERT token classifier; merge BIO tags into spans</td><td>Tokens / aspect terms with offsets, confidence and context</td></tr>
+<tr><td>Sentiment (<code>app/nlp/sentiment.py</code>, <code>app/models/sentiment_model.py</code>)</td><td>Aspect-pair and sentence-level BERT classifiers</td><td>(sentence, aspect) pairs, sentences / label and probability</td></tr>
+<tr><td>Pipeline (<code>app/nlp/pipeline.py</code>)</td><td>Runs the stages in order for one review</td><td>Review text / AnalysisResult</td></tr>
+<tr><td>REST API (<code>app/api/routes</code>)</td><td>Analyse, batch, history, statistics, health, model information</td><td>JSON request / JSON response, HTTP 200, 204, 404, 422, 503</td></tr>
+<tr><td>Database (<code>app/database</code>)</td><td>Store reviews and aspect results, aggregate statistics</td><td>AnalysisResult / rows in reviews and aspect_sentiments</td></tr>
+<tr><td>Training and evaluation (<code>training/*</code>)</td><td>Fine-tune, evaluate, baseline, error analysis, promote better models</td><td>Prepared data / model folders, training logs, reports and figures</td></tr>
+<tr><td>Frontend (<code>frontend/src</code>)</td><td>Home, Analyzer, Batch, History and Dashboard pages; CSV parsing and export</td><td>User input, CSV files / highlighted results, tables, charts, CSV download</td></tr>
+</tbody></table></div>
+</section>
+
+<section id="implementation">
+<h2><span class="num">8</span>Implementation</h2>
+<div class="prose"><p>The backend is written in Python and the frontend in TypeScript. TABLE VIII lists the libraries with the versions installed on the development machine; the full code is in the repository.</p></div>
+<div class="table-wrap"><table>
+<caption>TABLE VIII. Tools and libraries</caption>
+<thead><tr><th>Area</th><th>Library (version)</th><th>Used for</th></tr></thead>
+<tbody>
+<tr><td>Language runtime</td><td>Python 3.13.6; Node.js 24.14.1</td><td>Backend and training; frontend build</td></tr>
+<tr><td>Deep learning</td><td>PyTorch 2.14.1 (CPU build); Hugging Face Transformers 5.18.0 {{c:wolf2020}}</td><td>BERT models, tokenizers, training loop</td></tr>
+<tr><td>Classical NLP and ML</td><td>NLTK 3.10.3; scikit-learn 1.9.1; pandas 3.0.6; NumPy 2.5.3</td><td>Sentence splitting, POS tagging and lemmas (baseline, statistics); metrics; data handling</td></tr>
+<tr><td>Web service</td><td>FastAPI 0.142.2; Uvicorn 0.54.0; Pydantic 2.13.5; SQLAlchemy 2.1.3 with SQLite</td><td>REST API, request validation, review history</td></tr>
+<tr><td>Frontend</td><td>React 19.3.0; TypeScript 7.0.2; Vite 8.3.2; Tailwind CSS 4.3; Recharts 3.10.1; React Router 7</td><td>Pages, charts, build</td></tr>
+<tr><td>Testing and reporting</td><td>pytest; Vitest 5; Testing Library; Matplotlib 3.11.2; python-docx, python-pptx</td><td>Automated tests; figures; submission files</td></tr>
+</tbody></table></div>
+<div class="prose"><p><b>Data and preprocessing modules.</b> <code>prepare_dataset.py</code> parses the XML with the standard library, checks that every offset lies inside its sentence, drops duplicate annotations and duplicate sentences, removes training sentences found in the test set, and fails if any sentence text is shared between splits. Word-label alignment is done by the tokenizer's <code>word_ids</code>, which maps every word-piece back to its word:</p></div>
+<p class="listing">Listing 1. Encoding a pre-tokenised sentence for the aspect extractor (<code>app/models/aspect_model.py</code>)</p>
+<pre>def encode_words(tokenizer, words: list[str], max_length: int) -> Feature:
+    encoding = tokenizer(words, is_split_into_words=True,
+                         truncation=True, max_length=max_length)
+    feature = {
+        "input_ids": encoding["input_ids"],
+        "attention_mask": encoding["attention_mask"],
+        "word_ids": encoding.word_ids(),   # piece -> word index, None for [CLS]/[SEP]
+    }
+    if "token_type_ids" in encoding:
+        feature["token_type_ids"] = encoding["token_type_ids"]
+    return feature</pre>
+<div class="prose"><p><b>Sentiment module.</b> The same encoder function builds both classifier inputs. Truncation shortens only the sentence, never the aspect:</p></div>
+<p class="listing">Listing 2. Building the sentence-pair input (<code>app/models/sentiment_model.py</code>)</p>
+<pre>def encode_pair(tokenizer, text: str, aspect: str | None, max_length: int) -> Feature:
+    if aspect is None:      # overall sentiment: [CLS] text [SEP]
+        encoding = tokenizer(text, truncation=True, max_length=max_length)
+    else:                   # aspect sentiment: [CLS] sentence [SEP] aspect [SEP]
+        encoding = tokenizer(text, aspect, truncation="only_first",
+                             max_length=max_length)
+    feature = {"input_ids": encoding["input_ids"],
+               "attention_mask": encoding["attention_mask"]}
+    if "token_type_ids" in encoding:
+        feature["token_type_ids"] = encoding["token_type_ids"]
+    return feature</pre>
+<div class="prose"><p><b>Pipeline module.</b> <code>ABSAPipeline.analyze</code> chains the stages; the API route validates the request with Pydantic, calls it, stores the result and returns JSON.</p></div>
+<p class="listing">Listing 3. The end-to-end analysis (<code>app/nlp/pipeline.py</code>, shortened)</p>
+<pre>def analyze(self, review: str) -> AnalysisResult:
+    text = clean_text(review)
+    sentences = split_sentences(text)
+    aspects = extract_aspects(self.extractor, text, sentences)    # stage 1
+    sentiments = classify_aspects(self.classifier, aspects)       # stage 2
+    overall = classify_overall(self.overall_classifier, sentences)
+    return AnalysisResult(
+        review=text,
+        overall_sentiment=overall.label, overall_confidence=overall.confidence,
+        aspects=[AspectSentimentResult(aspect=a.text, sentiment=s.label,
+                     confidence=s.confidence, context=a.context,
+                     start=a.start, end=a.end, extraction_confidence=a.confidence)
+                 for a, s in zip(aspects, sentiments)])</pre>
+<div class="prose">
+<p><b>Training module.</b> <code>training/common.py</code> holds the shared fine-tuning loop (Section 6.5) and writes a <code>training_log.json</code> with the hyperparameters, per-epoch loss and validation scores and the training time next to every model. <code>run_all.py</code> trains the three models into a candidates folder, can be interrupted and resumed, and keeps the laptop awake during the multi-hour CPU run; <code>promote.py</code> installs a candidate only if it is not worse than the installed model.</p>
+<p><b>API and database modules.</b> Eight endpoints are exposed under <code>/api</code>: analyse one review, analyse a batch, list, read and delete stored reviews, statistics, health and model information. Two tables, <code>reviews</code> and <code>aspect_sentiments</code>, are linked one-to-many with cascade delete; each aspect row stores a lemmatised form for grouping and the character offsets for highlighting.</p>
+<p><b>Frontend module.</b> A single typed API client is the only code that talks HTTP. The Analyzer page highlights aspects in the text and lists them with sentiment and confidence next to the overall label. The Batch page parses pasted text or CSV in the browser, sends it in chunks of up to 50 reviews with progress and cancel, and exports results with spreadsheet-formula characters neutralised. History pages through stored analyses; the Dashboard draws Recharts charts and the models' test metrics served by <code>/api/model-info</code>.</p>
+</div>
+</section>
+
+<section id="setup">
+<h2><span class="num">9</span>Experimental setup</h2>
+<div class="prose">
+<p><b>Hardware.</b> All training and evaluation ran on one laptop with an 11th-generation Intel Core i5-1135G7 processor (4 cores, 2.4 GHz), 7.7 GB of RAM and no graphics processor, under Windows 11 Pro. The three models took 211 minutes of training in total.</p>
+<p><b>Software.</b> Python 3.13.6, PyTorch 2.14.1 (CPU build), Hugging Face Transformers 5.18.0, scikit-learn 1.9.1 and NLTK 3.10.3 (TABLE VIII).</p>
+<p><b>Baselines.</b> Three comparison systems were scored on the same test sentences by the same metric functions:</p>
+<ol>
+<li><b>B1, rule and lexicon (classical).</b> Aspects are runs of nouns found by the NLTK part-of-speech tagger; sentiment is the count of opinion words from the Hu and Liu lexicon {{c:hu2004}} in the aspect's clause, with a negation rule.</li>
+<li><b>B2, aspect-agnostic BERT (pretrained transformer).</b> The fine-tuned sentence-level BERT classifier labels the sentence, and every aspect in it receives that label. It measures what the aspect input adds.</li>
+<li><b>B3, single-domain BERT extractor (pretrained transformer).</b> The same aspect extractor trained on laptop reviews only, used to measure transfer to an unseen domain (restaurants).</li>
+</ol>
+<p>Published results of other ABSA models on the same benchmark are compared in Section 10.6.</p>
+<p><b>Metrics.</b> Aspect extraction uses precision, recall and F1 with exact span matching (both boundaries must equal the annotation), micro-averaged over aspects. Aspect sentiment is scored with gold aspects given, by accuracy, macro-F1, per-class precision, recall and F1, and a confusion matrix. End-to-end ABSA starts from raw text and counts an (aspect, sentiment) pair as correct only if span and sentiment are both right. With TP, FP and FN the true positives, false positives and false negatives:</p>
+<p class="eq">P = TP / (TP + FP),&nbsp;&nbsp; R = TP / (TP + FN),&nbsp;&nbsp; F1 = 2PR / (P + R),&nbsp;&nbsp; macro-F1 = (1/3) Σ<sub>c</sub> F1<sub>c</sub> <span class="no">(5)</span></p>
+<p><b>Random seed.</b> 42 for data splitting, weight initialisation of the classification heads and batch order. Every number comes from one training run.</p>
+</div>
+</section>
+
+<section id="results">
+<h2><span class="num">10</span>Results and discussion</h2>
+<h3>10.1 Comparison with the baselines</h3>
+<div class="table-wrap"><table>
+<caption>TABLE IX. Deployed system against the baselines on the SemEval-2014 test sets (both domains)</caption>
+<thead><tr><th>Metric</th><th class="n">B1 rule + lexicon</th><th class="n">B2 aspect-agnostic BERT</th><th class="n">Proposed (BERT, two-stage)</th></tr></thead>
+<tbody>
+<tr><td>Aspect extraction precision</td><td class="n">0.2736</td><td class="n">n/a</td><td class="n"><b>0.8255</b></td></tr>
+<tr><td>Aspect extraction recall</td><td class="n">0.6035</td><td class="n">n/a</td><td class="n"><b>0.8680</b></td></tr>
+<tr class="hl"><td>Aspect extraction F1</td><td class="n">0.3765</td><td class="n">n/a</td><td class="n">0.8462</td></tr>
+<tr><td>Aspect sentiment accuracy</td><td class="n">0.6633</td><td class="n">0.7804</td><td class="n"><b>0.8151</b></td></tr>
+<tr class="hl"><td>Aspect sentiment macro-F1</td><td class="n">0.6159</td><td class="n">0.6814</td><td class="n">0.7456</td></tr>
+<tr><td>Aspect sentiment accuracy, mixed sentences (331 aspects)</td><td class="n">n/a</td><td class="n">0.4864</td><td class="n"><b>0.6616</b></td></tr>
+<tr><td>Overall sentiment accuracy / macro-F1</td><td class="n">0.7201 / 0.6475</td><td class="n" colspan="2">0.8160 / 0.7202 (sentence-level BERT)</td></tr>
+<tr class="hl"><td>End-to-end F1</td><td class="n">0.2530</td><td class="n">n/a</td><td class="n">0.6977</td></tr>
+</tbody></table></div>
+<div class="table-wrap"><table>
+<caption>TABLE X. Deployed system per domain</caption>
+<thead><tr><th>Metric</th><th class="n">Laptops</th><th class="n">Restaurants</th><th class="n">Both</th></tr></thead>
+<tbody>
+<tr><td>Aspect extraction P / R / F1</td><td class="n">0.787 / 0.818 / 0.802</td><td class="n">0.848 / 0.897 / 0.872</td><td class="n">0.826 / 0.868 / 0.846</td></tr>
+<tr><td>Aspect sentiment accuracy / macro-F1</td><td class="n">0.774 / 0.732</td><td class="n">0.838 / 0.753</td><td class="n">0.815 / 0.746</td></tr>
+<tr><td>B2 aspect-agnostic accuracy / macro-F1</td><td class="n">0.767 / 0.712</td><td class="n">0.788 / 0.653</td><td class="n">0.780 / 0.681</td></tr>
+<tr><td>Overall sentiment accuracy / macro-F1</td><td class="n">0.796 / 0.731</td><td class="n">0.830 / 0.707</td><td class="n">0.816 / 0.720</td></tr>
+<tr><td>End-to-end F1 (B1 baseline)</td><td class="n">0.631 (0.159)</td><td class="n">0.736 (0.322)</td><td class="n">0.698 (0.253)</td></tr>
+</tbody></table></div>
+<div class="prose">
+<p>All four objectives were met: extraction F1 0.846 (target 0.80), sentiment accuracy 0.815 and macro-F1 0.746 (targets 0.80 and 0.70), and an end-to-end gain of +0.445 over B1 (target +0.20). The rule baseline recovers 60% of the gold aspects but most of the nouns it proposes are not aspects (precision 0.27), so its end-to-end F1 stays at 0.25. B2 looks competitive on accuracy (0.780) because 81% of test aspects sit in sentences whose aspects all share one polarity; on the 331 aspects in mixed sentences it drops to 0.486, while the aspect-aware model reaches 0.662. That gap is the reason for the aspect-aware design. Laptops are harder than restaurants for every component: laptop aspects are more often multi-word technical terms ("ms office 2011 for mac") and the laptop test set has more neutral aspects.</p>
+</div>
+<h3>10.2 Training and validation curves</h3>
+<figure><img src="img/fig_training_curves.png" alt="Training loss falling and validation scores rising then flattening for the three models" loading="lazy"><figcaption><b>Fig. 5.</b> Training loss (blue, left axis) and validation score (red, right axis) per epoch; the dotted line marks the checkpoint kept.</figcaption></figure>
+<div class="prose"><p>The loop logged training loss and a validation score per epoch; validation loss was not recorded, so the validation curve shows the selection metric instead. Training loss falls steadily for all three models. Validation macro-F1 of the aspect-sentiment model peaks at epoch 3 (0.757) and falls at epoch 4 (0.747) while training loss keeps falling, the first sign of over-fitting, and checkpoint selection kept epoch 3. The extractor and the overall model were still improving slightly at their last epoch.</p></div>
+<h3>10.3 Per-class results and confusion matrix</h3>
+<div class="table-wrap"><table>
+<caption>TABLE XI. Aspect sentiment per class (both domains, gold aspects)</caption>
+<thead><tr><th>Class</th><th class="n">Precision</th><th class="n">Recall</th><th class="n">F1</th><th class="n">Test aspects</th></tr></thead>
+<tbody>
+<tr><td>Negative</td><td class="n">0.6651</td><td class="n">0.8580</td><td class="n">0.7493</td><td class="n">324</td></tr>
+<tr><td>Neutral</td><td class="n">0.6973</td><td class="n">0.4986</td><td class="n">0.5815</td><td class="n">365</td></tr>
+<tr><td>Positive</td><td class="n">0.9018</td><td class="n">0.9102</td><td class="n">0.9060</td><td class="n">1,069</td></tr>
+</tbody></table></div>
+<figure><img src="img/sentiment_confusion_matrix.png" alt="Confusion matrix of aspect sentiment predictions" loading="lazy" style="max-width:520px"><figcaption><b>Fig. 6.</b> Confusion matrix of the aspect-sentiment classifier on the test sets.</figcaption></figure>
+<div class="prose"><p>Neutral is the weakest class: half of the neutral aspects are labelled positive or negative. Negative has high recall but lower precision because many of those neutral aspects are pulled into it. Accuracy rises with the reported confidence (laptops: 43% below 0.60, 84% at 0.80 and above; restaurants: 50% and 92%), so confidence is informative even though it is not calibrated.</p></div>
+<h3>10.4 Transfer to an unseen domain</h3>
+<div class="table-wrap"><table>
+<caption>TABLE XII. Aspect extraction on the restaurant test set: B3 (laptops only) against the deployed model</caption>
+<thead><tr><th>Metric</th><th class="n">B3, trained on laptops only</th><th class="n">Deployed, both domains</th></tr></thead>
+<tbody>
+<tr><td>Precision</td><td class="n">0.8923</td><td class="n">0.8475</td></tr>
+<tr><td>Recall</td><td class="n">0.2337</td><td class="n">0.8968</td></tr>
+<tr><td>F1</td><td class="n">0.3704</td><td class="n">0.8715</td></tr>
+</tbody></table></div>
+<div class="prose"><p>A laptop-only extractor is precise on restaurant text but finds fewer than a quarter of the aspects: it has never seen that "sushi" or "waiter" can be an aspect. On the laptop test set both models score alike (F1 0.790 against 0.802). Aspect vocabulary is domain-specific, so a new product category needs annotated examples from that category.</p></div>
+<h3>10.5 Error analysis</h3>
+<div class="prose"><p>Of 1,758 test aspects, 325 are misclassified (144 of 638 laptop aspects, 181 of 1,120 restaurant aspects). A random sample of 40 misclassified aspects (20 per domain, fixed seed) was read and grouped by cause (TABLE XIII). Most errors come from neutral aspects that share a sentence with opinion words meant for something else, and from negation or absence.</p></div>
+<div class="table-wrap"><table>
+<caption>TABLE XIII. Causes of 40 sampled sentiment errors</caption>
+<thead><tr><th>Cause</th><th class="n">Errors</th><th>Typical pattern</th></tr></thead>
+<tbody>
+<tr><td>Opinion of a neighbouring phrase leaks onto a neutral aspect</td><td class="n">14</td><td>Neutral mentions in descriptive or complaining sentences receive the sentence's tone</td></tr>
+<tr><td>Implicit sentiment (facts, quantities, no opinion word)</td><td class="n">8</td><td>"12.44 seconds to boot."; "only one waiter for the whole restaurant"</td></tr>
+<tr><td>Negation and absence</td><td class="n">7</td><td>"has no hard drive"; "the fans aren't audible"; "NEVER HAD A BAD MEAL"</td></tr>
+<tr><td>Sarcasm, rhetorical questions and idioms</td><td class="n">5</td><td>"How can hope to stay in business with service like this?"; "bending over backwards"</td></tr>
+<tr><td>Contrast and wishes in long multi-clause sentences</td><td class="n">4</td><td>"So happy with this purchase, I just wish it came with Microsoft Word."</td></tr>
+<tr><td>Graded or hedged sentiment</td><td class="n">2</td><td>"sushi was good, just not fantastic"; "the food is mediocre for the prices"</td></tr>
+</tbody></table></div>
+<div class="table-wrap"><table>
+<caption>TABLE XIV. Examples of misclassified aspects</caption>
+<thead><tr><th>Sentence</th><th>Aspect</th><th>Gold</th><th>Predicted (confidence)</th><th>Cause</th></tr></thead>
+<tbody>
+<tr><td>The Mac mini is about 8x smaller than my old computer which is a huge bonus and runs very quiet, actually the fans aren't audible unlike my old pc</td><td>fans</td><td>positive</td><td>negative (88%)</td><td>Negation</td></tr>
+<tr><td>How can hope to stay in business with service like this?</td><td>service</td><td>negative</td><td>positive (47%)</td><td>Rhetorical question</td></tr>
+<tr><td>I needed a laptop with big storage, a nice screen and fast so I can photoshop without any problem.</td><td>screen</td><td>neutral</td><td>positive (99%)</td><td>Opinion leak (a wish, not an evaluation)</td></tr>
+<tr><td>I know some people complained about HDMI issues but they released a firmware patch to address that issue.</td><td>HDMI</td><td>neutral</td><td>negative (85%)</td><td>Opinion leak</td></tr>
+<tr><td>Average cake thats been courted by a LOT of hype.</td><td>cake</td><td>negative</td><td>positive (76%)</td><td>Sarcasm</td></tr>
+</tbody></table></div>
+<div class="prose"><p>Extraction errors follow a different pattern: one-word aspects are found exactly 89.5% (laptops) and 94.8% (restaurants) of the time, multi-word aspects only 72.3% and 76.7%, usually because a boundary is one word off ("graphic design" found as "design"). Spelling variation is handled better than expected: in Section 12, "batery life" and "scren" were still extracted and labelled. A recurring failure outside the test set is the word "spotless", which the classifier read as negative in two hotel reviews; it is rare in laptop and restaurant reviews.</p>
+<p><b>Leakage check.</b> The scores are well below 100%, but the split was still checked: the preparation script removed the two training sentences that also occur in the test set and fails if any sentence text is shared between splits. One caveat remains. The deployed models replaced earlier ones after a comparison of test scores, a mild use of the test set for model selection, so the reported numbers may be slightly optimistic.</p></div>
+<h3>10.6 Comparison with published work</h3>
+{{LITCMP}}
+</section>
+
+<section id="ui">
+<h2><span class="num">11</span>User interface</h2>
+<div class="prose"><p>The interface has five pages reachable from a top navigation bar, with a connection indicator that shows whether the backend and models are available. All screenshots were taken from the running application with the trained models loaded.</p></div>
+<figure><img src="img/home.png" alt="Home page explaining aspect-based sentiment analysis with a link to the analyzer" loading="lazy"><figcaption><b>Fig. 7.</b> Home screen: what the system does and where to start.</figcaption></figure>
+<figure><img src="img/analyzer-result.png" alt="Analyzer page showing a review with highlighted aspects, the overall sentiment and an aspect table" loading="lazy"><figcaption><b>Fig. 8.</b> Analyzer: input box and output with explanation. Aspects are highlighted in the review in their sentiment colour; the table lists each aspect with sentiment, confidence and the clause it occurs in; the overall label is shown for comparison.</figcaption></figure>
+<figure><img src="img/batch-results.png" alt="Batch page with uploaded CSV, progress and a results table" loading="lazy"><figcaption><b>Fig. 9.</b> Batch analysis of an uploaded CSV file with progress, per-review results and CSV export.</figcaption></figure>
+<figure><img src="img/history.png" alt="History page listing stored analyses with one expanded" loading="lazy"><figcaption><b>Fig. 10.</b> Review history with filtering, paging and one stored analysis opened.</figcaption></figure>
+<figure><img src="img/dashboard.png" alt="Dashboard with sentiment distribution charts, most frequent aspects and model test metrics" loading="lazy"><figcaption><b>Fig. 11.</b> Dashboard: sentiment distributions, the most mentioned aspects with their sentiment, and the models' test-set metrics.</figcaption></figure>
+<figure class="phone"><img src="img/phone-analyzer.png" alt="Analyzer page on a 390-pixel-wide phone screen" loading="lazy"><figcaption><b>Fig. 12.</b> Analyzer on a 390-pixel-wide phone screen.</figcaption></figure>
+</section>
+
+<section id="testing">
+<h2><span class="num">12</span>Testing</h2>
+<div class="prose"><p>TABLE XV checks the behaviour of the complete application: each case was sent as an HTTP request to the real service with the deployed models and a temporary database on 2 November 2026, on the laptop described in Section 9. "Expected output" is what a careful human reader would answer; a case fails when the application's answer differs, even if it does not crash. Times include the HTTP round trip inside the test client.</p></div>
+<div class="table-wrap"><table>
+<caption>TABLE XV. Application test cases</caption>
+<thead><tr><th>Test ID</th><th>Input / Scenario</th><th>Expected output</th><th>Actual output</th><th>Pass / Fail</th></tr></thead>
+<tbody>
+<tr><td>T1</td><td>Normal laptop review: "The screen is gorgeous but the battery life is terrible."</td><td>screen positive, battery life negative</td><td>screen positive (0.99), battery life negative (0.98); overall negative; 4.70 s (first request after start-up)</td><td class="pass">Pass</td></tr>
+<tr><td>T2</td><td>Normal restaurant review: "The pasta was delicious but the service was slow."</td><td>pasta positive, service negative</td><td>pasta positive (1.00), service negative (0.98); overall neutral (0.53); 0.23 s</td><td class="pass">Pass</td></tr>
+<tr><td>T3</td><td>Empty input ""</td><td>Rejected with a validation message, no server error</td><td>HTTP 422 "String should have at least 1 character"</td><td class="pass">Pass</td></tr>
+<tr><td>T4</td><td>Whitespace only "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"</td><td>Rejected as blank</td><td>HTTP 422 "review must not be blank"</td><td class="pass">Pass</td></tr>
+<tr><td>T5</td><td>Very long input: 4,679 characters (90 sentences)</td><td>All aspects found, within the time limit</td><td>180 aspects, all positive; HTTP 200 in 8.50 s</td><td class="part">Pass (slow)</td></tr>
+<tr><td>T6</td><td>Input of 5,001 characters</td><td>Rejected as too long</td><td>HTTP 422 "String should have at most 5000 characters"</td><td class="pass">Pass</td></tr>
+<tr><td>T7</td><td>HTML, entities and emojis: "&lt;b&gt;The keyboard&lt;/b&gt; is AMAZING!!! 😍😍 but the trackpad &amp;amp; speakers are meh 👎"</td><td>Markup removed; keyboard positive; trackpad and speakers negative</td><td>keyboard positive (1.00), trackpad negative (0.58), speakers neutral (0.56)</td><td class="part">Partial</td></tr>
+<tr><td>T8</td><td>Typos: "The batery life is grate but the scren is to dim."</td><td>batery life positive, scren negative</td><td>batery life negative (0.69), scren negative (0.94); both misspelt aspects extracted</td><td class="part">Partial</td></tr>
+<tr><td>T9</td><td>Code-mixed Hindi-English: "Camera bahut accha hai but battery jaldi khatam ho jati hai."</td><td>Camera positive, battery negative</td><td>Camera neutral (0.48), battery negative (0.43)</td><td class="part">Partial</td></tr>
+<tr><td>T10</td><td>Other language (French): "La batterie est excellente mais l'écran est trop sombre."</td><td>batterie positive, écran negative</td><td>No aspects found; overall positive (0.97)</td><td class="fail">Fail (out of scope)</td></tr>
+<tr><td>T11</td><td>No aspect: "I love it!"</td><td>No aspects; overall positive</td><td>No aspects; overall positive (0.99); 0.12 s</td><td class="pass">Pass</td></tr>
+<tr><td>T12</td><td>Negation: "The food was not good at all."</td><td>food negative</td><td>food negative (0.98)</td><td class="pass">Pass</td></tr>
+<tr><td>T13</td><td>Three sentences: "The camera takes sharp photos. However, the phone overheats when gaming. Delivery was quick."</td><td>camera positive, phone negative, Delivery positive</td><td>camera positive (0.99), gaming negative (0.86), Delivery positive (1.00); 0.57 s</td><td class="part">Partial</td></tr>
+<tr><td>T14</td><td>Unseen domain (hotel): "The room was spotless but the breakfast was cold and the staff were rude."</td><td>room positive, breakfast negative, staff negative</td><td>room negative (0.96), breakfast negative (0.96), staff negative (0.98)</td><td class="fail">Fail</td></tr>
+<tr><td>T15</td><td>Batch of 3 reviews</td><td>3 results, each stored</td><td>HTTP 200, 3 results with ids; 0.58 s</td><td class="pass">Pass</td></tr>
+<tr><td>T16</td><td>Batch of 51 reviews</td><td>Rejected: limit is 50</td><td>HTTP 422 "List should have at most 50 items"</td><td class="pass">Pass</td></tr>
+<tr><td>T17</td><td>History and statistics after T1 to T15</td><td>All stored reviews listed and counted</td><td>14 reviews, 201 aspects; distributions and top aspects returned</td><td class="pass">Pass</td></tr>
+<tr><td>T18</td><td>Delete a stored review, then read it</td><td>204, then 404</td><td>HTTP 204, then HTTP 404</td><td class="pass">Pass</td></tr>
+<tr><td>T19</td><td>Read a review id that does not exist</td><td>404 Not Found</td><td>HTTP 404</td><td class="pass">Pass</td></tr>
+<tr><td>T20</td><td>Health and model information</td><td>Models loaded, database reachable; test metrics returned</td><td>status "ok", models_loaded true, database true; model-info HTTP 200</td><td class="pass">Pass</td></tr>
+</tbody></table></div>
+<div class="prose">
+<p><b>Summary.</b> 13 of 20 cases pass, one passes but is slow, four are partly right and two fail. The application itself never crashed: every invalid input was rejected with a clear 422 message (R6) and every valid one returned a well-formed result. The partial and failed cases are model errors that match Section 10.5 (weak neutral handling, rare words such as "spotless", the noun "gaming" picked instead of "phone") and the stated scope: the model was trained on English only, so French text yields no aspects and Hindi-English text yields low-confidence labels. Typical reviews took 0.12 to 0.57 s, meeting R8; the very first request after start-up took 4.7 s while the models warmed up, and the 4,679-character review took 8.5 s.</p>
+<p><b>Automated tests.</b> Separately from TABLE XV, the repository contains 149 fast backend tests (pytest, with small stand-in models) and 10 tests on the real models, plus 114 frontend component and page tests (Vitest). At the last full run on 20 October 2026 all 149 fast backend tests and all 114 frontend tests passed and the production build succeeded; the 10 real-model tests passed on 10 October 2026. The Batch page was also checked in a real browser at 1,366 and 390 pixels wide with keyboard, mouse and touch (R11).</p>
+</div>
+</section>
+
+<section id="deployment">
+<h2><span class="num">13</span>Deployment and user guide</h2>
+<div class="prose"><p><b>Requirements.</b> Python 3.10 or newer, Node.js 20 or newer, about 2 GB of free RAM for the three models, and about 1.3 GB of disk for the model files. The commands are for Windows PowerShell; on macOS or Linux activate the environment with <code>source .venv/bin/activate</code>. No hosted deployment exists; the application runs locally.</p></div>
+<h4>Step 1. Backend environment</h4>
+<pre>python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install torch --index-url https://download.pytorch.org/whl/cpu
+pip install -r backend\requirements.txt</pre>
+<h4>Step 2. Dataset</h4>
+<pre>cd backend
+python -m training.prepare_dataset</pre>
+<h4>Step 3. Models</h4>
+<div class="prose"><p>The three model folders (about 420 MB each) are not stored in git. Copy <code>models/aspect_extraction</code>, <code>models/sentiment</code> and <code>models/overall_sentiment</code> from the shared archive (<code>docs/model_sharing.md</code>), or train them (several hours on a laptop CPU, minutes on a GPU or in Google Colab):</p></div>
+<pre>python -m training.run_all --smoke    # whole chain on 32 sentences, a few minutes
+python -m training.run_all            # train the three models on both domains
+python -m training.promote --apply    # install the candidates that qualify
+python -m training.evaluate           # regenerate docs/results.md</pre>
+<h4>Step 4. Run the application (one command)</h4>
+<pre>powershell -ExecutionPolicy Bypass -File scripts\start_app.ps1</pre>
+<div class="prose"><p>The script frees ports 8000 and 5173, starts the backend, waits until <code>/api/health</code> reports the models loaded, starts the frontend and opens <a href="http://localhost:5173">http://localhost:5173</a>. Stop it with <code>scripts\stop_app.ps1</code>. The manual equivalent is <code>uvicorn app.main:app</code> in <code>backend</code> and <code>npm install</code> then <code>npm run dev</code> in <code>frontend</code>. Interactive API documentation is served at <code>http://localhost:8000/docs</code>.</p></div>
+<h4>Step 5. Use it</h4>
+<ol class="prose">
+<li>Open the Analyzer, paste a review and press Analyze (or Ctrl+Enter). Aspects are highlighted and listed with sentiment and confidence.</li>
+<li>Open Batch, paste one review per line or upload a CSV with a <code>review</code> column (for example <code>data/samples/demo_reviews.csv</code>), run it, and export the results as CSV.</li>
+<li>Open History to search, reopen or delete earlier analyses, and Dashboard for the aggregate charts and the models' test metrics.</li>
+</ol>
+<h4>Tests</h4>
+<pre>cd backend;  pytest -m "not model"     # fast backend tests
+cd frontend; npm test; npm run build    # frontend tests and production build</pre>
+<div class="prose"><p>Configuration uses environment variables with the prefix <code>ABSA_</code> (see <code>backend/.env.example</code>); no secrets are needed. A <code>docker-compose.yml</code> is included but has not been run, because Docker was not available on the development machine.</p></div>
+</section>
+
+<section id="limitations">
+<h2><span class="num">14</span>Limitations and ethical considerations</h2>
+<div class="prose">
+<p><b>Where the model fails or was not tested.</b> The models were trained on English laptop and restaurant reviews from 2014. Other product categories work only as far as the models generalise (Section 10.4 and test T14), and other languages, dialects, transliterated or code-mixed text were not part of training (T9, T10). Only explicit aspects are found: "It dies after two hours" implies the battery but names no aspect. The sentiment classifier identifies an aspect by its text, so if the same term occurs twice in one sentence with different sentiments both occurrences get one prediction. Neutral aspects and sentences that mix sentiments remain the weakest cases. Overall-sentiment labels were derived from aspect labels rather than annotated. Every number comes from one run with one seed, without confidence intervals, and confidence values are uncalibrated softmax probabilities.</p>
+<p><b>Bias.</b> The training reviews come from one benchmark collected from English-language sources in 2014; the vocabulary, products and writing styles of that sample shape what counts as an aspect and how opinions are read. Reviews written in other varieties of English, by non-native writers or with heavy slang may be analysed less accurately. Positive aspects dominate the data (52 to 64%), and the error analysis shows a bias towards assigning a sentence's tone to neutral mentions. Results should support, not replace, a human reading of the reviews, especially when they influence decisions about products or people.</p>
+<p><b>Privacy.</b> The system runs locally and sends no text to any external service. Analysed reviews are stored in a local SQLite file only when saving is enabled, and each stored review can be deleted from the History page. Reviews can contain names or personal details; users should not upload such text without the authors' consent, and a production deployment would need access control, retention rules and encryption at rest, none of which this academic prototype provides.</p>
+<p><b>Dataset licence.</b> SemEval-2014 Task 4 data is used for non-commercial academic research, as its organisers intended, and is cited {{c:pontiki2014}}. The data files are not redistributed in the repository; the preparation script downloads them. The Hu and Liu opinion lexicon used by the baseline is likewise cited {{c:hu2004}}. The pretrained BERT weights are used under their Apache 2.0 licence.</p>
+<p><b>Use of AI tools.</b> An AI coding assistant (Claude, by Anthropic) was used during the project to help write and review code, tests and documentation, to run the evaluation scripts, and to draft this report from the project's own measured outputs. All numbers in the report were produced by the project's scripts and test runs, and the literature was checked against the publishers' pages. <span class="fill">Team: confirm or adjust this statement to match your course's AI-use policy.</span></p>
+</div>
+</section>
+
+<section id="conclusion">
+<h2><span class="num">15</span>Conclusion and future work</h2>
+<div class="prose">
+<p>This project built a complete aspect-based sentiment analysis system for product reviews: a validated, leakage-free data pipeline for SemEval-2014 Task 4, two fine-tuned BERT models that extract aspect terms and classify the sentiment towards each, a sentence-level model for comparison, and a web application that serves them on a CPU-only laptop. On the official test sets the system reached an aspect-extraction F1 of 0.846, an aspect-sentiment accuracy of 0.815 with a macro-F1 of 0.746, and an end-to-end F1 of 0.698, against 0.253 for a rule-and-lexicon baseline. On sentences that mix sentiments it was correct for 66% of aspects where an aspect-agnostic model managed 49%, which shows the value of reading each aspect separately.</p>
+<p>Three next steps follow from the error analysis. First, collect or select more training sentences with contrasting aspects and neutral mentions, the two weakest cases. Second, mark the aspect's position inside the sentence in the classifier input, so that repeated terms and neighbouring opinions are told apart. Third, annotate a few hundred reviews from each new product category the application is meant to serve, and repeat training with several seeds to report variance.</p>
+</div>
+</section>
+
+<section id="references">
+<h2><span class="num">16</span>References</h2>
+{{REFS}}
+</section>
+
+<section id="artefacts">
+<h2><span class="num">17</span>Project artefacts and member contribution</h2>
+<div class="table-wrap"><table>
+<caption>TABLE XVI. Project artefacts</caption>
+<thead><tr><th>Item</th><th>Link / Details</th></tr></thead>
+<tbody>
+<tr><td>Code repository (GitHub)</td><td><span class="fill">GitHub URL</span> The code is in a local git repository (branch <code>feature/models-evaluation</code>); no remote has been set up yet.</td></tr>
+<tr><td>Demo video</td><td><span class="fill">Video link</span> A talk script for recording it is in <code>docs/demo_talk.md</code>.</td></tr>
+<tr><td>Deployed app (if any)</td><td>Not deployed; runs locally (Section 13).</td></tr>
+<tr><td>Plagiarism report (% similarity)</td><td><span class="fill">Similarity % from the institution's checker</span></td></tr>
+<tr><td>Trained models</td><td>Three BERT model folders, about 420 MB each, shared as <code>absa-models.zip</code> (<code>docs/model_sharing.md</code>).</td></tr>
+</tbody></table></div>
+<div class="table-wrap"><table>
+<caption>TABLE XVII. Member contribution</caption>
+<thead><tr><th>Name</th><th>Register Number</th><th>Work done</th></tr></thead>
+<tbody>
+<tr><td><span class="fill">Name</span></td><td><span class="fill">Register no.</span></td><td><span class="fill">e.g. data pipeline, model training and evaluation</span></td></tr>
+<tr><td><span class="fill">Name</span></td><td><span class="fill">Register no.</span></td><td><span class="fill">e.g. backend API and database</span></td></tr>
+<tr><td><span class="fill">Name</span></td><td><span class="fill">Register no.</span></td><td><span class="fill">e.g. frontend, testing, report</span></td></tr>
+</tbody></table></div>
+</section>
+
+<section id="checklist">
+<h2><span class="num">✓</span>Final submission checklist</h2>
+<ul class="check">
+<li><span class="box n">☐</span><span>Cover page complete: course, names, register numbers and supervisor still to be filled.</span></li>
+<li><span class="box y">☑</span><span>All sections filled; template guidance removed.</span></li>
+<li><span class="box y">☑</span><span>Literature review with at least 8 papers (2021 to 2026) and the comparison table.</span></li>
+<li><span class="box y">☑</span><span>Requirements, design and module tables filled (Sections 4 and 7).</span></li>
+<li><span class="box y">☑</span><span>Results compared with baselines (classical and transformer) using accuracy, macro-F1 and span F1.</span></li>
+<li><span class="box y">☑</span><span>Error analysis with 40 real misclassified examples grouped by cause.</span></li>
+<li><span class="box y">☑</span><span>UI screenshots captioned.</span></li>
+<li><span class="box y">☑</span><span>20 application test cases with actual results.</span></li>
+<li><span class="box n">☐</span><span>Run instructions tested on a fresh machine or Colab: not yet done.</span></li>
+<li><span class="box y">☑</span><span>Figures captioned "Fig. 1." and tables "TABLE I".</span></li>
+<li><span class="box y">☑</span><span>At least 10 references in IEEE style.</span></li>
+<li><span class="box n">☐</span><span>Plagiarism report attached.</span></li>
+<li><span class="box n">☐</span><span>Code repository and demo video links.</span></li>
+</ul>
+</section>
+
+</main>
+</div>
+</body>
+</html>
